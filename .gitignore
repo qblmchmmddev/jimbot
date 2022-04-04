@@ -1,0 +1,5 @@
+.idea
+target
+jimbot/roms
+jimbot-desktop/dist
+Cargo.lock
