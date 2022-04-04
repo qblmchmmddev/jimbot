@@ -1,0 +1,20 @@
+<html>
+<head>
+    <meta charset="UTF-8" />
+</head>
+<body>
+<a href="#" id="play">Play</a>
+<p>Make sure the screen is in focus to receive input (click the screen to focus) (Safari no sound, Chrome yes sound)</p>
+<p>WASD to move, A = K, B = J, Select = V, Start = B</p>
+</body>
+<script type="module">
+    import init from './dist/jimbot-desktop.js'
+
+    document.getElementById('play').addEventListener("click", function(event) {
+    (function(event) {
+        event.target.parentNode.removeChild(event.target)
+        init()
+    }).call(document.getElementById('click_me'), event);
+});
+  </script>
+</html>
