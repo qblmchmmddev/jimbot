@@ -38,7 +38,7 @@ fn main() {
     let (buff_prod, mut buff_con) = buffer.split();
     let output_data_fn = move |data: &mut [f32], _: &cpal::OutputCallbackInfo| {
         for sample in data {
-            let x = buff_con.pop().unwrap_or(0.) * 0.0025 as f32;
+            let x = buff_con.pop().unwrap_or(0.) * 0.05 as f32;
             *sample = x;
         }
     };
