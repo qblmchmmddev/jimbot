@@ -1,3 +1,3 @@
 # jimbot
 
-[Demo (Super mario land)](https://qblmchmmddev.github.io/jimbot/)
+[Demo](https://qblmchmmddev.github.io/jimbot/)
