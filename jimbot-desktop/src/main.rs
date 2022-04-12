@@ -142,8 +142,8 @@ fn run_jimbot(
     mut images: ResMut<Assets<Image>>,
     mut audio_producer: ResMut<Producer<f32>>,
 ) {
-    const M_CYCLE_PER_SECOND: f32 = 4194304.0 / 4.0 * 1.0;
-    let mut cycle_to_run = 0.0f32;
+    const M_CYCLE_PER_FRAME: f32 = (4194304.0 / 4.0) / 60.0;
+    let mut current_cycle = 0.0f32;
 
     if keys.pressed(KeyCode::W) { jimbot.joypad_press(joypad::Key::Up) } else { jimbot.joypad_release(joypad::Key::Up) }
     if keys.pressed(KeyCode::A) { jimbot.joypad_press(joypad::Key::Left) } else { jimbot.joypad_release(joypad::Key::Left) }
@@ -154,13 +154,11 @@ fn run_jimbot(
     if keys.pressed(KeyCode::B) { jimbot.joypad_press(joypad::Key::Start) } else { jimbot.joypad_release(joypad::Key::Start) }
     if keys.pressed(KeyCode::V) { jimbot.joypad_press(joypad::Key::Select) } else { jimbot.joypad_release(joypad::Key::Select) }
 
-    let dt = time.delta_seconds();
-    cycle_to_run += M_CYCLE_PER_SECOND * dt;
 
-    while cycle_to_run > 0.0 {
+    while current_cycle < M_CYCLE_PER_FRAME {
         // println!("Tima: {}", jimbot.mmu().get(0xFF04));
         jimbot.run();
-        cycle_to_run -= 1.;
+        current_cycle += 1.;
         // let pc = jimbot.cpu().registers().get16(R16::PC);
         // if jimbot.error_message().is_none() {// && (pc >= 0x348) && (pc <= 0x38A) {// && pc < 0xCB80) {
         //     let ly = jimbot.mmu().ly();
