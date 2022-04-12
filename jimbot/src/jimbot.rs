@@ -16,7 +16,7 @@ pub struct Jimbot {
 
 impl Default for Jimbot {
     fn default() -> Self {
-        let boot_rom = include_bytes!("../roms/boot_rom.bin").to_owned();
+        let boot_rom = include_bytes!("../roms/dmg_boot.bin").to_owned();
         #[cfg(not(target_arch = "wasm32"))]
             let args: Vec<String> = std::env::args().collect();
         #[cfg(not(target_arch = "wasm32"))]
