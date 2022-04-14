@@ -1,15 +1,244 @@
-<html>
+<!DOCTYPE html>
+<html lang="en">
 
 <head>
-    <meta charset="UTF-8" />
+    <style>
+        * {
+            touch-action: manipulation;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+
+        body {
+            background-color: black;
+            margin: auto;
+        }
+    </style>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://pixijs.download/release/pixi.js"></script>
+    <title>Jimbot</title>
 </head>
 
 <body>
-    <ul>
-        <li><a href="./mario.html" id="mario">Mario</a></li>
-        <li><a href="./tmnt2.html" id="tetris">Teenage Mutant Hero Turtles II: Back from the Sewers</a></li>
-        <li><a href="./tetris.html" id="tetris">Tetris</a></li>
-    </ul>
+    <script type="module">
+        function createButton(id, text, hide) {
+            let b = document.createElement("button")
+            b.id = id
+            b.style.width = '60px'
+            b.style.height = '60px'
+            b.innerHTML = text
+            b.style.margin = '2px'
+            if (hide) {
+                b.disabled = true
+                b.style.visibility = 'hidden'
+            }
+            return b
+        }
+        import init, { JimbotWeb, Key } from "./jimbot-web-wasm/jimbot_web.js"
+        let w = 160
+        let h = 144
+        let jimbotWeb = undefined
+        let lcd_data = new Uint8Array(w * h)
+
+        let d0 = document.createElement("div")
+        d0.style.textAlign = "center"
+        PIXI.settings.SCALE_MODE = PIXI.SCALE_MODES.NEAREST
+        let app = new PIXI.Application({ width: w * 2, height: h * 2, resolution: 3 })
+        app.view.style.margin = "auto"
+        let b = createButton("cp", "Insert cartridge")
+        b.onclick = () => {
+            document.getElementById('cartPicker').click()
+        }
+        b.style.width = "100%"
+        function calc_size() {
+            var ww = Math.max(document.documentElement.clientWidth, window.innerWidth || 0);
+            var wh = Math.max(document.documentElement.clientHeight, window.innerHeight || 0);
+            let ch = ww * h / w
+            if (ch <= wh) {
+                app.view.style.width = "" + ww + "px"
+                app.view.style.height = "" + ch + "px"
+            } else {
+                app.view.style.width = "" + wh * w / h + "px"
+                app.view.style.height = "" + wh + "px"
+            }
+        }
+        window.onresize = calc_size
+        calc_size()
+        d0.appendChild(b)
+        d0.appendChild(app.view)
+        let t = document.createElement("p")
+        t.id = "text"
+        t.innerHTML = "Button below is for mobile, keyboard use [WASD:move, j:B, k:A, v:SELECT, b:START]"
+        t.style.color = "white"
+        d0.appendChild(t)
+        document.body.appendChild(d0)
+        let d = document.createElement("div")
+        d.style.margin = "auto"
+        d.style.width = "100%"
+        let d2 = document.createElement("div")
+        let d3 = document.createElement("div")
+        d.style.marginTop = "25px"
+        d.appendChild(createButton("", "LEFT", true))
+        d.appendChild(createButton("up", "UP"))
+        d2.style.marginTop = "25px"
+        d2.appendChild(createButton("left", "LEFT"))
+        d2.appendChild(createButton("down", "DOWN"))
+        d2.appendChild(createButton("right", "RIGHT"))
+        d2.appendChild(createButton("", "SP", true))
+        d2.appendChild(createButton("b", "B"))
+        d2.appendChild(createButton("a", "A"))
+        d3.appendChild(createButton("select", "Select"))
+        d3.appendChild(createButton("start", "Start"))
+        d3.style.marginTop = "50px"
+        document.body.appendChild(d)
+        document.body.appendChild(d2)
+        document.body.appendChild(d3)
+        let pixels = new Uint8Array(w * h * 4)
+        let texture = new PIXI.Texture.fromBuffer(pixels, w, h)
+        let lcd = new PIXI.Sprite(texture)
+        lcd.width = w * 2
+        lcd.height = h * 2
+        app.stage.addChild(lcd);
+        app.ticker.add((delta) => {
+            if (!jimbotWeb) return
+            jimbotWeb.run(lcd_data)
+            for (var i = 0; i < lcd_data.length; i++) {
+                let idx = i * 4
+                let lcd = lcd_data[i]
+                let color = 0
+                if (lcd == 0) {
+                    color = 0xE0F8D0
+                } else if (lcd == 1) {
+                    color = 0x88C070
+                } else if (lcd == 2) {
+                    color = 0x346856
+                } else {
+                    color = 0x081820
+                }
+                pixels[idx + 0] = (color >> 16) & 0xff
+                pixels[idx + 1] = (color >> 8) & 0xff
+                pixels[idx + 2] = (color >> 0) & 0xff
+                pixels[idx + 3] = 0xFF
+            }
+            texture.baseTexture.resource.update()
+        })
+        preventLongPressMenu(document.getElementsByTagName('button'));
+
+        function preventLongPressMenu(nodes) {
+            for (var i = 0; i < nodes.length; i++) {
+                nodes[i].oncontextmenu = absorbEvent_;
+            }
+        }
+        function absorbEvent_(event) {
+            var e = event;
+            e.preventDefault()
+            e.stopPropagation()
+            e.stopImmediatePropagation()
+            return false;
+        }
+        async function initialize() {
+            await init()
+            const cartPicker = document.getElementById("cartPicker")
+            cartPicker.onchange = e => {
+                if (e.target.files.length == 0) return
+                if (jimbotWeb) jimbotWeb.free()
+                jimbotWeb = undefined
+                const file = e.target.files[0]
+                var reader = new FileReader();
+                reader.onload = function () {
+                    // cartridge = new Uint8Array(this.result)
+                    let cp = document.getElementById("cp")
+                    cp.innerHTML = "PLAY"
+                    cp.onclick = () => {
+                        jimbotWeb = new JimbotWeb(new Uint8Array(this.result))
+                        document.addEventListener('keydown', (event) => {
+                            switch (event.key) {
+                                case "w":
+                                    jimbotWeb.joypad_press(Key.Up)
+                                    break;
+                                case "a":
+                                    jimbotWeb.joypad_press(Key.Left)
+                                    break;
+                                case "s":
+                                    jimbotWeb.joypad_press(Key.Down)
+                                    break;
+                                case "d":
+                                    jimbotWeb.joypad_press(Key.Right)
+                                    break;
+                                case "j":
+                                    jimbotWeb.joypad_press(Key.B)
+                                    break;
+                                case "k":
+                                    jimbotWeb.joypad_press(Key.A)
+                                    break;
+                                case "v":
+                                    jimbotWeb.joypad_press(Key.Select)
+                                    break;
+                                case "b":
+                                    jimbotWeb.joypad_press(Key.Start)
+                                    break;
+                                default:
+                                    break;
+                            }
+                        })
+                        document.addEventListener('keyup', (event) => {
+                            switch (event.key) {
+                                case "w":
+                                    jimbotWeb.joypad_release(Key.Up)
+                                    break;
+                                case "a":
+                                    jimbotWeb.joypad_release(Key.Left)
+                                    break;
+                                case "s":
+                                    jimbotWeb.joypad_release(Key.Down)
+                                    break;
+                                case "d":
+                                    jimbotWeb.joypad_release(Key.Right)
+                                    break;
+                                case "j":
+                                    jimbotWeb.joypad_release(Key.B)
+                                    break;
+                                case "k":
+                                    jimbotWeb.joypad_release(Key.A)
+                                    break;
+                                case "v":
+                                    jimbotWeb.joypad_release(Key.Select)
+                                    break;
+                                case "b":
+                                    jimbotWeb.joypad_release(Key.Start)
+                                    break;
+                                default:
+                                    break;
+                            }
+                        })
+                        document.getElementById("start").addEventListener("touchstart", () => { jimbotWeb.joypad_press(Key.Start) })
+                        document.getElementById("start").addEventListener("touchend", () => { jimbotWeb.joypad_release(Key.Start) })
+                        document.getElementById("select").addEventListener("touchstart", () => { jimbotWeb.joypad_press(Key.Select) })
+                        document.getElementById("select").addEventListener("touchend", () => { jimbotWeb.joypad_release(Key.Select) })
+                        document.getElementById("a").addEventListener("touchstart", () => { jimbotWeb.joypad_press(Key.A) })
+                        document.getElementById("a").addEventListener("touchend", () => { jimbotWeb.joypad_release(Key.A) })
+                        document.getElementById("b").addEventListener("touchstart", () => { jimbotWeb.joypad_press(Key.B) })
+                        document.getElementById("b").addEventListener("touchend", () => { jimbotWeb.joypad_release(Key.B) })
+                        document.getElementById("up").addEventListener("touchstart", () => { jimbotWeb.joypad_press(Key.Up) })
+                        document.getElementById("up").addEventListener("touchend", () => { jimbotWeb.joypad_release(Key.Up) })
+                        document.getElementById("down").addEventListener("touchstart", () => { jimbotWeb.joypad_press(Key.Down) })
+                        document.getElementById("down").addEventListener("touchend", () => { jimbotWeb.joypad_release(Key.Down) })
+                        document.getElementById("left").addEventListener("touchstart", () => { jimbotWeb.joypad_press(Key.Left) })
+                        document.getElementById("left").addEventListener("touchend", () => { jimbotWeb.joypad_release(Key.Left) })
+                        document.getElementById("right").addEventListener("touchstart", () => { jimbotWeb.joypad_press(Key.Right) })
+                        document.getElementById("right").addEventListener("touchend", () => { jimbotWeb.joypad_release(Key.Right) })
+                        d0.removeChild(cp)
+                        d0.removeChild(document.getElementById("text"))
+                    }
+                }
+                reader.readAsArrayBuffer(file);
+            }
+        }
+        initialize()
+    </script>
+    <input type="file" style="display:none" id="cartPicker" />
 </body>
 
 </html>
