@@ -36,6 +36,19 @@ impl Default for Jimbot {
 }
 
 impl Jimbot {
+
+    pub fn new_with_cartridge_bytes(bytes: Vec<u8>) -> Self {
+        let boot_rom = include_bytes!("../roms/dmg_boot.bin").to_owned();
+        let cartridge = cartridge::new_cartridge_from_bytes(bytes);
+        Self {
+            mmu: MMU::new(boot_rom, Some(cartridge)),
+            cpu: CPU::default(),
+            ppu: PPU::default(),
+            error_message: None,
+            i: 0,
+        }
+    }
+
     pub fn run(&mut self) {
         if self.error_message.is_some() { return; }
         self.error_message = self.cpu.cycle(&mut self.mmu).err();
