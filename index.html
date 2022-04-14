@@ -10,19 +10,43 @@
         }
 
         body {
+            overflow: hidden;
             background-color: black;
             margin: auto;
+            touch-action: manipulation;
         }
     </style>
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <script src="https://pixijs.download/release/pixi.js"></script>
     <title>Jimbot</title>
 </head>
 
 <body>
     <script type="module">
+        document.addEventListener('gesturestart', function (e) {
+            e.preventDefault();
+            // special hack to prevent zoom-to-tabs gesture in safari
+            // document.body.style.zoom = 0.99;
+        });
+
+        document.addEventListener('gesturechange', function (e) {
+            e.preventDefault();
+            // special hack to prevent zoom-to-tabs gesture in safari
+            // document.body.style.zoom = 0.99;
+        });
+
+        document.addEventListener('gestureend', function (e) {
+            e.preventDefault();
+            // special hack to prevent zoom-to-tabs gesture in safari
+            // document.body.style.zoom = 0.99;
+        });
+        document.addEventListener("dblclick", function (e) {
+            e.preventDefault();
+            // special hack to prevent zoom-to-tabs gesture in safari
+            // document.body.style.zoom = 0.99;
+        });
         function createButton(id, text, hide) {
             let b = document.createElement("button")
             b.id = id
@@ -66,35 +90,67 @@
         }
         window.onresize = calc_size
         calc_size()
-        d0.appendChild(b)
-        d0.appendChild(app.view)
         let t = document.createElement("p")
         t.id = "text"
-        t.innerHTML = "Button below is for mobile, keyboard use [WASD:move, j:B, k:A, v:SELECT, b:START]"
+        t.innerHTML = "<b>Insert cartridge (rom), and press Play</b><br\>Button below is for mobile<br\>Keyboard use WASD:move, j:B, k:A, v:SELECT, b:START"
         t.style.color = "white"
         d0.appendChild(t)
+        d0.appendChild(b)
+        d0.appendChild(app.view)
         document.body.appendChild(d0)
         let d = document.createElement("div")
-        d.style.margin = "auto"
-        d.style.width = "100%"
+        let da = document.createElement("div")
+        let db = document.createElement("div")
+        d.style.display = "flex"
+        da.style.display = "flex"
+        d.style.marginLeft = "15px"
+        d.style.marginRight = "15px"
+        db.style.marginLeft = "auto"
+        da.appendChild(createButton("", "", true))
+        da.appendChild(createButton("up", "UP"))
+        db.appendChild(createButton("a", "A"))
+        d.appendChild(da)
+        d.appendChild(db)
+
         let d2 = document.createElement("div")
+        d2.style.display = "flex"
+        d2.style.marginLeft = "15px"
+        d2.style.marginRight = "15px"
+        let d21 = document.createElement("div")
+        let d22 = document.createElement("div")
+        d22.style.marginLeft = "auto"
+        d21.style.display = "flex"
+        d22.style.display = "flex"
+        d21.appendChild(createButton("left", "LEFT"))
+        d21.appendChild(createButton("", "", true))
+        d21.appendChild(createButton("right", "RIGHT"))
+        // d2.appendChild(createButton("", "SP", true))
+        let b1 = createButton("b", "B")
+        d22.appendChild(b1)
+        d22.appendChild(createButton("", "", true))
+        d2.appendChild(d21)
+        d2.appendChild(d22)
         let d3 = document.createElement("div")
-        d.style.marginTop = "25px"
-        d.appendChild(createButton("", "LEFT", true))
-        d.appendChild(createButton("up", "UP"))
-        d2.style.marginTop = "25px"
-        d2.appendChild(createButton("left", "LEFT"))
-        d2.appendChild(createButton("down", "DOWN"))
-        d2.appendChild(createButton("right", "RIGHT"))
-        d2.appendChild(createButton("", "SP", true))
-        d2.appendChild(createButton("b", "B"))
-        d2.appendChild(createButton("a", "A"))
-        d3.appendChild(createButton("select", "Select"))
-        d3.appendChild(createButton("start", "Start"))
-        d3.style.marginTop = "50px"
+        d3.style.display = "flex"
+        d3.style.marginLeft = "15px"
+        d3.style.marginRight = "15px"
+        d3.appendChild(createButton("", "", true))
+        d3.appendChild(createButton("down", "DOWN"))
+        let d4 = document.createElement("div")
+        d4.style.display = "flex"
+        d4.style.marginLeft = "15px"
+        d4.style.marginRight = "15px"
+        let d41 = document.createElement("div")
+        let d42 = document.createElement("div")
+        d41.appendChild(createButton("select", "Select"))
+        d42.style.marginLeft = "auto"
+        d42.appendChild(createButton("start", "Start"))
+        d4.appendChild(d41)
+        d4.appendChild(d42)
         document.body.appendChild(d)
         document.body.appendChild(d2)
         document.body.appendChild(d3)
+        document.body.appendChild(d4)
         let pixels = new Uint8Array(w * h * 4)
         let texture = new PIXI.Texture.fromBuffer(pixels, w, h)
         let lcd = new PIXI.Sprite(texture)
