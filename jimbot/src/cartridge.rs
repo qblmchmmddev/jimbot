@@ -44,9 +44,9 @@ pub fn new_cartridge_from_bytes(bytes: Vec<u8>) -> Box<dyn Cartridge> {
     match metadata.cartridge_type() {
         CartridgeType::RomOnly => Box::new(CartridgeRomOnly::new(bytes)),
         CartridgeType::RomMbc1 => Box::new(CartridgeMBC1::new(metadata, bytes)),
-        // CartridgeType::RomMbc1Ram => Box::new(CartridgeMBC1Ram::new(metadata, bytes)),
-        // CartridgeType::RomMbc1RamBattery => Box::new(CartridgeMBC1RamBattery::new(file_path, metadata, bytes)),
-        // CartridgeType::RomMbc3RamBattery => Box::new(CartridgeMBC3RamBattery::new(file_path, metadata, bytes)),
+        CartridgeType::RomMbc1Ram => Box::new(CartridgeMBC1Ram::new(metadata, bytes)),
+        CartridgeType::RomMbc1RamBattery => Box::new(CartridgeMBC1RamBattery::new(None, metadata, bytes)),
+        CartridgeType::RomMbc3RamBattery => Box::new(CartridgeMBC3RamBattery::new(None, metadata, bytes)),
         _ => panic!("Unsupported cartridge: {:?}", metadata.cartridge_type()),
     }
 }
@@ -59,8 +59,8 @@ pub fn new_cartridge_from_file_path(file_path: String) -> Box<dyn Cartridge> {
         CartridgeType::RomOnly => Box::new(CartridgeRomOnly::new(bytes)),
         CartridgeType::RomMbc1 => Box::new(CartridgeMBC1::new(metadata, bytes)),
         CartridgeType::RomMbc1Ram => Box::new(CartridgeMBC1Ram::new(metadata, bytes)),
-        CartridgeType::RomMbc1RamBattery => Box::new(CartridgeMBC1RamBattery::new(file_path, metadata, bytes)),
-        CartridgeType::RomMbc3RamBattery => Box::new(CartridgeMBC3RamBattery::new(file_path, metadata, bytes)),
+        CartridgeType::RomMbc1RamBattery => Box::new(CartridgeMBC1RamBattery::new(Some(file_path), metadata, bytes)),
+        CartridgeType::RomMbc3RamBattery => Box::new(CartridgeMBC3RamBattery::new(Some(file_path), metadata, bytes)),
         _ => panic!("Unsupported cartridge: {:?}", metadata.cartridge_type()),
     }
 }

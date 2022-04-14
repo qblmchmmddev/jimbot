@@ -1,13 +1,13 @@
+use crate::cartridge::metadata::Metadata;
+use crate::cartridge::Cartridge;
 use std::fs::{File, OpenOptions};
 use std::io::{Read, Write};
 #[cfg(not(target_arch = "wasm32"))]
 use std::os::unix::fs::FileExt;
 use std::path::{Path, PathBuf};
-use crate::cartridge::Cartridge;
-use crate::cartridge::metadata::Metadata;
 
 pub struct CartridgeMBC1RamBattery {
-    save_file: File,
+    save_file: Option<File>,
     metadata: Metadata,
     rom_hi_bank_number: u16,
     ram_bank_number: u8,
@@ -28,16 +28,24 @@ impl Cartridge for CartridgeMBC1RamBattery {
                 //     self.data[0x4000 + address]
                 // }
             }
-            0x4000..=0x7FFF => self.data[(0x4000 * self.rom_hi_bank_number as usize) + (address - 0x4000)],
+            0x4000..=0x7FFF => {
+                self.data[(0x4000 * self.rom_hi_bank_number as usize) + (address - 0x4000)]
+            }
             0xA000..=0xBFFF => {
-                if !self.ram_enabled { return 0xFF; };
+                if !self.ram_enabled {
+                    return 0xFF;
+                };
                 let address = match self.metadata.ram_size().bank_size {
                     1 | 2 => (address as usize - 0xA000) % self.metadata.ram_size().size as usize,
-                    _ => panic!("Reading ext ram unsupported bank size:{:?} {:#06x}", self.metadata.ram_size().bank_size, address),
+                    _ => panic!(
+                        "Reading ext ram unsupported bank size:{:?} {:#06x}",
+                        self.metadata.ram_size().bank_size,
+                        address
+                    ),
                 };
                 self.ram[address as usize]
             }
-            _ => panic!("Cartridge MBC1 GET {:#06X}", address)
+            _ => panic!("Cartridge MBC1 GET {:#06X}", address),
         }
     }
 
@@ -57,17 +65,29 @@ impl Cartridge for CartridgeMBC1RamBattery {
             0xA000..=0xBFFF => {
                 if self.ram_enabled {
                     let address = match self.metadata.ram_size().bank_size {
-                        1 | 2 => (address as usize - 0xA000) % self.metadata.ram_size().size as usize,
-                        _ => panic!("Cartridge MBC1 WRITE UNSUPPORTED RAM:{:?} {:#06x} {:#02x}", self.metadata.ram_size().bank_size, address, val),
+                        1 | 2 => {
+                            (address as usize - 0xA000) % self.metadata.ram_size().size as usize
+                        }
+                        _ => panic!(
+                            "Cartridge MBC1 WRITE UNSUPPORTED RAM:{:?} {:#06x} {:#02x}",
+                            self.metadata.ram_size().bank_size,
+                            address,
+                            val
+                        ),
                     };
                     self.ram[address] = val;
-                    #[cfg(not(target_arch = "wasm32"))]
-                    self.save_file.write_at(&self.ram[address..=address], address as u64);
+                    #[cfg(not(target_arch ="wasm32"))]
+                    if let Some(save_file) = self.save_file.as_mut() {
+                        save_file.write_at(&self.ram[address..=address], address as u64);
+                    }
                 } else {
-                    println!("Cartridge MBC1 WRITE TO DISABLED RAM {:#06X} {:04X}", address, val)
+                    println!(
+                        "Cartridge MBC1 WRITE TO DISABLED RAM {:#06X} {:04X}",
+                        address, val
+                    )
                 }
             }
-            _ => panic!("Cartridge MBC1 SET {:#06X} {:04X}", address, val)
+            _ => panic!("Cartridge MBC1 SET {:#06X} {:04X}", address, val),
         }
     }
 
@@ -77,34 +97,55 @@ impl Cartridge for CartridgeMBC1RamBattery {
 }
 
 impl CartridgeMBC1RamBattery {
-    pub fn new(file_path: String, metadata: Metadata, bytes: Vec<u8>) -> Self {
-        let mut save_file_path = Path::new(&file_path).to_owned();
-        save_file_path.pop();
-        save_file_path.push(format!("{}.sav", metadata.title()));
-        let save_file_path = save_file_path.to_str().expect("Cannot create save file").to_string();
+    pub fn new(file_path: Option<String>, metadata: Metadata, bytes: Vec<u8>) -> Self {
         let mut ram = vec![0u8; metadata.ram_size().size as usize];
-        let save_file = if let Ok(mut save_file) = OpenOptions::new()
-            .create(false)
-            .write(true)
-            .read(true)
-            .open(&save_file_path) {
-            // Save file exist
-            println!("SAVE FILE FOUND: {:?}", save_file);
-            let file_metadata = save_file.metadata().expect("Cannot get metadata");
-            if file_metadata.len() != metadata.ram_size().size { panic!("Corrupted save file: {}, size: {}, ram size: {}", save_file_path, file_metadata.len(), metadata.ram_size().size) }
-            save_file.read(&mut ram).expect(&format!("Cannot read save file: {}", &save_file_path));
-            save_file
-        } else {
-            // Create file
-            let mut file = OpenOptions::new()
-                .create(true)
-                .read(true)
+
+        let save_file = if let Some(file_path) = file_path {
+            let mut save_file_path = Path::new(&file_path).to_owned();
+            save_file_path.pop();
+            save_file_path.push(format!("{}.sav", metadata.title()));
+            let save_file_path = save_file_path
+                .to_str()
+                .expect("Cannot create save file")
+                .to_string();
+            let save_file = if let Ok(mut save_file) = OpenOptions::new()
+                .create(false)
                 .write(true)
+                .read(true)
                 .open(&save_file_path)
-                .expect(&format!("Cannot create save file: {}", save_file_path));
-            file.write_all(&ram).expect(&format!("Filed to write file: {}", save_file_path));
-            file
+            {
+                // Save file exist
+                println!("SAVE FILE FOUND: {:?}", save_file);
+                let file_metadata = save_file.metadata().expect("Cannot get metadata");
+                if file_metadata.len() != metadata.ram_size().size {
+                    panic!(
+                        "Corrupted save file: {}, size: {}, ram size: {}",
+                        save_file_path,
+                        file_metadata.len(),
+                        metadata.ram_size().size
+                    )
+                }
+                save_file
+                    .read(&mut ram)
+                    .expect(&format!("Cannot read save file: {}", &save_file_path));
+                save_file
+            } else {
+                // Create file
+                let mut file = OpenOptions::new()
+                    .create(true)
+                    .read(true)
+                    .write(true)
+                    .open(&save_file_path)
+                    .expect(&format!("Cannot create save file: {}", save_file_path));
+                file.write_all(&ram)
+                    .expect(&format!("Filed to write file: {}", save_file_path));
+                file
+            };
+            Some(save_file)
+        } else {
+            None
         };
+
         Self {
             save_file,
             metadata,
@@ -127,7 +168,7 @@ impl CartridgeMBC1RamBattery {
             032 => 0b0001_1111,
             064 => 0b0001_1111,
             128 => 0b0001_1111,
-            _ => panic!("Unknown rom bank size: {}", rom_bank_size)
+            _ => panic!("Unknown rom bank size: {}", rom_bank_size),
         }
     }
 }

@@ -1,10 +1,10 @@
-use std::env;
 use crate::apu::APU;
 use crate::cartridge;
 use crate::cartridge::Cartridge;
 use crate::cpu::CPU;
 use crate::mmu::{joypad, MMU};
 use crate::ppu::PPU;
+use std::env;
 
 pub struct Jimbot {
     mmu: MMU,
@@ -14,17 +14,13 @@ pub struct Jimbot {
     i: u8,
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 impl Default for Jimbot {
     fn default() -> Self {
         let boot_rom = include_bytes!("../roms/dmg_boot.bin").to_owned();
-        #[cfg(not(target_arch = "wasm32"))]
-            let args: Vec<String> = std::env::args().collect();
-        #[cfg(not(target_arch = "wasm32"))]
-            let cartridge_file_path = &args[1];
-        #[cfg(target_arch = "wasm32")]
-            let cartridge = cartridge::new_cartridge_from_bytes(include_bytes!("../roms/Super Mario Land (World) (Rev 1).gb").to_vec());
-        #[cfg(not(target_arch = "wasm32"))]
-            let cartridge = cartridge::new_cartridge_from_file_path(cartridge_file_path.to_owned());
+        let args: Vec<String> = std::env::args().collect();
+        let cartridge_file_path = &args[1];
+        let cartridge = cartridge::new_cartridge_from_file_path(cartridge_file_path.to_owned());
         Self {
             mmu: MMU::new(boot_rom, Some(cartridge)),
             cpu: CPU::default(),
@@ -36,7 +32,6 @@ impl Default for Jimbot {
 }
 
 impl Jimbot {
-
     pub fn new_with_cartridge_bytes(bytes: Vec<u8>) -> Self {
         let boot_rom = include_bytes!("../roms/dmg_boot.bin").to_owned();
         let cartridge = cartridge::new_cartridge_from_bytes(bytes);
@@ -50,7 +45,9 @@ impl Jimbot {
     }
 
     pub fn run(&mut self) {
-        if self.error_message.is_some() { return; }
+        if self.error_message.is_some() {
+            return;
+        }
         self.error_message = self.cpu.cycle(&mut self.mmu).err();
         for _ in 0..4 {
             self.mmu.cycle_timer();
@@ -69,8 +66,12 @@ impl Jimbot {
     pub fn cpu(&self) -> &CPU {
         &self.cpu
     }
-    pub fn error_message(&self) -> &Option<String> { &self.error_message }
-    pub fn clear_error(&mut self) { self.error_message = None }
+    pub fn error_message(&self) -> &Option<String> {
+        &self.error_message
+    }
+    pub fn clear_error(&mut self) {
+        self.error_message = None
+    }
     pub fn ppu(&self) -> &PPU {
         &self.ppu
     }
@@ -81,5 +82,7 @@ impl Jimbot {
         self.mmu.joypad_press(key);
     }
 
-    pub fn joypad_release(&mut self, key: joypad::Key) { self.mmu.joypad_release(key); }
+    pub fn joypad_release(&mut self, key: joypad::Key) {
+        self.mmu.joypad_release(key);
+    }
 }
