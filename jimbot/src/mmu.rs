@@ -219,7 +219,7 @@ impl MMU {
             0xFF4C..=0xFF79 => println!("Write to unusable io: {:#06X} {}", address_usize, val),
             0xFF80..=0xFFFE => self.hram[address_usize - 0xFF80] = val,
             0xFFFF => self.interrupt_enables = val,
-            _ => println!("Set ??? {:#06X} {}", address_usize, val),
+            _ => {}//println!("Set ??? {:#06X} {}", address_usize, val),
         }
     }
     // todo takes 160 m cycles

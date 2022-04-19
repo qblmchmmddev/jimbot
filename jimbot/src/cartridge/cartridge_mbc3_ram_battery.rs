@@ -68,9 +68,7 @@ impl Cartridge for CartridgeMBC3RamBattery {
                 self.ram_rtc_enabled = enable_ram_rtc;
             }
             0x2000..=0x3FFF => {
-                let new = (val as u16 & self.rom_number_bit_mask() as u16);
-                // println!("NEW ROMBANK: {}", new);
-                self.rom_hi_bank_number = if new == 0 { 1 } else { val as u16 };
+                self.rom_hi_bank_number = if val == 0 { 1 } else { val as u16 };
             }
             0x4000..=0x5FFF => match val {
                 0x00..=0x03 => {
@@ -195,20 +193,6 @@ impl CartridgeMBC3RamBattery {
             rtc_data_latch_writes: 0xFF,
             data: bytes,
             ram,
-        }
-    }
-
-    fn rom_number_bit_mask(&self) -> u8 {
-        let rom_bank_size = self.metadata.rom_size().bank_size;
-        match rom_bank_size {
-            002 => 0b0000_0001,
-            004 => 0b0000_0011,
-            008 => 0b0000_0111,
-            016 => 0b0000_1111,
-            032 => 0b0001_1111,
-            064 => 0b0001_1111,
-            128 => 0b0001_1111,
-            _ => panic!("Unknown rom bank size: {}", rom_bank_size),
         }
     }
 }

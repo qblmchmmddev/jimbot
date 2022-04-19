@@ -2012,10 +2012,6 @@ impl CPU {
 
     fn handle_interrupt(&mut self, mmu: &mut MMU) {
         // Disable halt when interrupt is pending
-        if mmu.ly() == 144 && mmu.lyc() == 144 {
-            // println!("[{:#06X}] {:?} {:?} {:?} [AF:{:#06X} BC:{:#06X} DE:{:#06X}, HL:{:#06X}, SP:{:#06X}] ly:{} lyc:{} if:{:#08b} ie:{:#08b} ime:{}", self.repc, op, p1, p2, af, bc, de, hl, sp, jimbot.mmu().ly(), jimbot.mmu().lyc(), jimbot.mmu().get(0xFF0F), jimbot.mmu().get(0xFFFF), jimbot.cpu().ime());
-            // println!("Handling interrupt ime ins: {:?}", self.instruction.ins());
-        }
         if let (Dcd, _, _) = self.instruction.ins() {
             if mmu.get(0xFFFF) & mmu.get(0xFF0F) != 0 { self.halted = false; }
             if self.ime {

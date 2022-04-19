@@ -39,13 +39,18 @@ impl Default for PPU {
 }
 
 impl PPU {
-    const INITIAL_HBLANK_CYCLE_NEED: u16 = 80;
-
     pub fn cycle(&mut self, mmu: &mut MMU) {
         let lcdc = mmu.lcdc();
-        if !lcdc.is_display_enable() { return; }
-        let mut ly = mmu.ly();
         let mut stat = mmu.lcdstat();
+        if !lcdc.is_display_enable() { 
+            stat.set_mode(Mode::HBlank);
+            self.draw_hblank_cycle_used = 376;
+            self.sprite_buffer.clear();
+            mmu.set_ly(0);
+            mmu.set_lcdstat(stat);
+            return;
+        }
+        let mut ly = mmu.ly();
         let mut new_stat_interrupt = false;
         match stat.mode() {
             Mode::OAMSearch => {
@@ -62,12 +67,12 @@ impl PPU {
             }
             Mode::HBlank => {
                 self.draw_hblank_cycle_used += 1;
+                self.sprite_buffer.clear();
                 if self.draw_hblank_cycle_used >= 376 {
                     self.draw_hblank_cycle_used = 0;
                     ly += 1;
                     stat.set_mode(if ly <= 143 {
                         new_stat_interrupt = new_stat_interrupt || stat.oam_interrupt();
-                        self.sprite_buffer.clear();
                         Mode::OAMSearch
                     } else {
                         new_stat_interrupt = new_stat_interrupt || stat.vblank_interrupt();

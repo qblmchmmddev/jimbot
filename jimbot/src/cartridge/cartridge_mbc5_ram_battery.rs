@@ -6,18 +6,26 @@ use std::io::{Read, Write};
 use std::os::unix::fs::FileExt;
 use std::path::{Path, PathBuf};
 
-pub struct CartridgeMBC1RamBattery {
+enum RamRtcMode {
+    Ram,
+    Rtc,
+    None,
+}
+
+pub struct CartridgeMBC5RamBattery {
     save_file: Option<File>,
     metadata: Metadata,
     rom_hi_bank_number: u16,
     ram_bank_number: u8,
     ram_enabled: bool,
     switchable_mode: bool,
+    ram_rtc_mode: RamRtcMode,
+    rtc_data_latch_writes: u8,
     data: Vec<u8>,
     ram: Vec<u8>,
 }
 
-impl Cartridge for CartridgeMBC1RamBattery {
+impl Cartridge for CartridgeMBC5RamBattery {
     fn get(&self, address: usize) -> u8 {
         match address {
             0x0000..=0x3FFF => {
@@ -32,24 +40,15 @@ impl Cartridge for CartridgeMBC1RamBattery {
                 self.data[(0x4000 * self.rom_hi_bank_number as usize) + (address - 0x4000)]
             }
             0xA000..=0xBFFF => {
-                if !self.ram_enabled {
-                    return 0xFF;
-                };
-                let address = match self.metadata.ram_size().bank_size {
-                    1 | 2 => (address as usize - 0xA000) % self.metadata.ram_size().size as usize,
-                    4 => match self.switchable_mode {
-                        true => (0x2000 * self.ram_bank_number as usize + (address as usize - 0xA000)),
-                        false => (address - 0xA000),
-                    }
-                    _ => panic!(
-                        "Reading ext ram unsupported bank size:{:?} {:#06x}",
-                        self.metadata.ram_size().bank_size,
-                        address
-                    ),
-                };
-                self.ram[address as usize]
+                if self.ram_enabled {
+                    let address = 0x2000 * self.ram_bank_number as usize + (address - 0xA000);
+                    self.ram[address]
+                } else {
+                    0xFF
+                    // println!("Cartridge MBC3 Battery WRITE TO DISABLED RAM {:#06X} {:04X}", address, val)
+                }
             }
-            _ => panic!("Cartridge MBC1 GET {:#06X}", address),
+            _ => panic!("Cartridge MBC5 GET {:#06X}", address),
         }
     }
 
@@ -59,43 +58,44 @@ impl Cartridge for CartridgeMBC1RamBattery {
                 let enable_ram = val & 0xF == 0xA;
                 self.ram_enabled = enable_ram;
             }
-            0x2000..=0x3FFF => {
-                let new = (val as u16 & self.rom_number_bit_mask() as u16);
-                // println!("NEW RBANK: {}", new);
-                self.rom_hi_bank_number = if new == 0 { 1 } else { new };
+            0x2000..=0x2FFF => {
+                // let new = (val as u16 & self.rom_number_bit_mask() as u16);
+                // println!("NEW ROMBANK: {}", new);
+                self.rom_hi_bank_number = (self.rom_hi_bank_number & 0xFF00) | val as u16;
             }
-            0x4000..=0x5FFF => self.ram_bank_number = self.ram_bank_number | val & 0b11,
-            0x6000..=0x7FFF => self.switchable_mode = val & 1 == 1,
+            0x3000..=0x3FFF => {
+                // let new = (val as u16 & self.rom_number_bit_mask() as u16);
+                // println!("NEW ROMBANK: {}", new);
+                self.rom_hi_bank_number = (self.rom_hi_bank_number & 0x00FF) | ((val as u16) << 8);
+            }
+            0x4000..=0x5FFF => self.ram_bank_number = val,
             0xA000..=0xBFFF => {
                 if self.ram_enabled {
-                    let address = match self.metadata.ram_size().bank_size {
-                        1 | 2 => {
-                            (address as usize - 0xA000) % self.metadata.ram_size().size as usize
-                        }
-                        4 => match self.switchable_mode {
-                            true => (0x2000 * self.ram_bank_number as usize + (address as usize - 0xA000)),
-                            false => (address - 0xA000),
-                        }
-                        _ => panic!(
-                            "Cartridge MBC1 WRITE UNSUPPORTED RAM:{:?} {:#06x} {:#02x}",
-                            self.metadata.ram_size().bank_size,
-                            address,
-                            val
-                        ),
-                    };
+                    let address = 0x2000 * self.ram_bank_number as usize + (address - 0xA000);
                     self.ram[address] = val;
-                    #[cfg(not(target_arch ="wasm32"))]
+
+                    #[cfg(not(target_arch = "wasm32"))]
                     if let Some(save_file) = self.save_file.as_mut() {
                         save_file.write_at(&self.ram[address..=address], address as u64);
                     }
                 } else {
                     println!(
-                        "Cartridge MBC1 WRITE TO DISABLED RAM {:#06X} {:04X}",
+                        "Cartridge MBC5 Battery WRITE TO DISABLED RAM {:#06X} {:04X}",
                         address, val
                     )
                 }
             }
-            _ => panic!("Cartridge MBC1 SET {:#06X} {:04X}", address, val),
+            // if self.ram_rtc_enabled {
+            //     let address = match self.metadata.ram_size().bank_size {
+            //         1 | 2 => (address as usize - 0xA000) % self.metadata.ram_size().size as usize,
+            //         _ => panic!("Cartridge MBC1 WRITE UNSUPPORTED RAM:{:?} {:#06x} {:#02x}", self.metadata.ram_size().bank_size, address, val),
+            //     };
+            //     self.ram[address] = val;
+            //     self.save_file.write_at(&self.ram[address..=address], address as u64);
+            // } else {
+            //     println!("Cartridge MBC1 WRITE TO DISABLED RAM {:#06X} {:04X}", address, val)
+            // }
+            _ => println!("Cartridge MBC5 SET {:#06X} {:04X}", address, val),
         }
     }
 
@@ -104,7 +104,7 @@ impl Cartridge for CartridgeMBC1RamBattery {
     }
 }
 
-impl CartridgeMBC1RamBattery {
+impl CartridgeMBC5RamBattery {
     pub fn new(file_path: Option<String>, metadata: Metadata, bytes: Vec<u8>) -> Self {
         let mut ram = vec![0u8; metadata.ram_size().size as usize];
 
@@ -153,7 +153,6 @@ impl CartridgeMBC1RamBattery {
         } else {
             None
         };
-
         Self {
             save_file,
             metadata,
@@ -161,22 +160,10 @@ impl CartridgeMBC1RamBattery {
             ram_bank_number: 0,
             ram_enabled: false,
             switchable_mode: false,
+            ram_rtc_mode: RamRtcMode::None,
+            rtc_data_latch_writes: 0xFF,
             data: bytes,
             ram,
-        }
-    }
-
-    fn rom_number_bit_mask(&self) -> u8 {
-        let rom_bank_size = self.metadata.rom_size().bank_size;
-        match rom_bank_size {
-            002 => 0b0000_0001,
-            004 => 0b0000_0011,
-            008 => 0b0000_0111,
-            016 => 0b0000_1111,
-            032 => 0b0001_1111,
-            064 => 0b0001_1111,
-            128 => 0b0001_1111,
-            _ => panic!("Unknown rom bank size: {}", rom_bank_size),
         }
     }
 }
