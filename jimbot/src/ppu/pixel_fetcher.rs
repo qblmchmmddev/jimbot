@@ -86,14 +86,13 @@ impl PixelFetcher {
         let offset = (x_offset + y_offset) & 0x3FF;
         let tile_data_address = tile_map_area.address(offset);
         let tile_data_index = mmu.get(tile_data_address);
-        // if tile_data_index == 0x16 {
+        // if mmu.lcdc().is_window_enable() {
         //     println!("[w:{}]({},{}) s({},{}) off({},{}) add:{:#06X} idx:{:#04X}", self.is_window_mode, self.x_position_counter, ly, scx, scy, x_offset, y_offset, tile_data_address, tile_data_index);
         // }
         self.current_step = Step::FetchTileDataLow { tile_data_index };
     }
 
     fn fetch_tile_data_low(&mut self, tile_data_index: u8, mmu: &MMU) {
-        // println!("FTL: {}", self.x_position_counter);
         if self.cycle_available < 2 { return; }
         self.cycle_available -= 2;
         let lcdc = mmu.lcdc();
@@ -104,17 +103,19 @@ impl PixelFetcher {
         let tile_row_offset = if self.is_window_mode { 2 * (self.window_line_counter as u16 % 8) } else { 2 * ((ly as u16 + scy as u16) % 8) };
         let tile_data_row_address_low = tile_data_address + tile_row_offset;
         let tile_data_row_low = mmu.get(tile_data_row_address_low);
-        // if self.x_position_counter == 0 {
-        //     println!("[w:{}]({},{}) scy:{} off:{} add:{:#06X} data:{:08b}", self.is_window_mode, self.x_position_counter, ly, scy, tile_row_offset, tile_data_row_address_low, tile_data_row_low);
+        // if mmu.lcdc().is_window_enable() {
+        //     println!("FTL [w:{}]({},{}) scy:{} off:{} add:{:#06X} data:{:08b}", self.is_window_mode, self.x_position_counter, ly, scy, tile_row_offset, tile_data_row_address_low, tile_data_row_low);
         // }
         self.current_step = Step::FetchTileDataHi { tile_data_row_address_low, tile_data_row_low }
     }
 
     fn fetch_tile_data_hi(&mut self, tile_data_row_address_low: u16, tile_data_row_low: u8, mmu: &MMU) {
-        // println!("FTH: {}", self.x_position_counter);
         if self.cycle_available < 2 { return; }
         self.cycle_available -= 2;
         let tile_data_row_hi = mmu.get(tile_data_row_address_low + 1);
+        // if mmu.lcdc().is_window_enable() {
+        //     println!("FTH addr:{:#06X} data:{:08b}", tile_data_row_address_low + 1, tile_data_row_hi);
+        // }
         self.current_step = Step::PushToFifo {
             tile_data_row_low,
             tile_data_row_hi,
@@ -171,9 +172,7 @@ impl PixelFetcher {
         // assert_eq!(self.current_step, Step::Idle, "Step should be idle but {:?}", self.current_step);
         self.current_step = Step::FetchTileDataIndex;
         self.cycle_available = 0;
-        if self.is_window_mode {
-            self.window_line_counter += 1;
-        }
+        if self.is_window_mode { self.window_line_counter += 1; }
         self.is_window_mode = false;
         self.x_position_counter = 0;
         if is_vblank { self.window_line_counter = 0; }

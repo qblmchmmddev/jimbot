@@ -65,7 +65,7 @@ impl APU {
             let ch1 = self.channel1.get_data();
             let ch2 = self.channel2.get_data();
             let ch3 = self.channel3.get_data();
-            let ch4 = self.channel4.get_data() / 2.;
+            let ch4 = self.channel4.get_data() * 0.75;
 
             let sample = (ch1 + ch2 + ch3 + ch4) / 4.;
             self.amps.push(sample);

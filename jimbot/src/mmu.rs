@@ -189,13 +189,11 @@ impl MMU {
             }
             0xFF41 => {
                 // println!("WRITE LSTAT: {:08b}", val);
-                self.lcdstat = (self.lcdstat & 0b11) | (val & 0b1111_1100);
+                self.lcdstat = (self.lcdstat & 0b1000_0011) | (val & 0b1111_1100);
                 // println!("NOW LSTAT: {:08b}", self.lcdstat);
             }
             0xFF42 => self.scy = val,
-            0xFF43 => {
-                self.scx = val;
-            },
+            0xFF43 => self.scx = val,
             0xFF44 => {
                 println!("Write to ly: {:#06X} {}", address_usize, val)
             },
