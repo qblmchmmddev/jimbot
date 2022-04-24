@@ -1,13 +1,13 @@
 use std::process::id;
 use crate::mmu::MMU;
 use crate::mmu::sprite::Sprite;
-use crate::ppu::pixel_fifo::PixelFifo;
-use crate::ppu::pixel_type::PixelType;
+use crate::ppu::pixel_fifo::{PixelFifo};
 use crate::ppu::sprite_pixel_fetcher::SpritePixelFetcher;
+use crate::ppu::sprite_pixel_fifo::SpritePixelFifo;
 
 #[derive(Debug)]
 pub enum Step {
-    WaitFifo { tile_pixel_row: [PixelType; 8] },
+    WaitFifo { tile_pixel_row: [u8; 8] },
     FetchTileDataIndex,
     FetchTileDataLow { tile_data_index: u8 },
     FetchTileDataHi { tile_data_row_address_low: u16, tile_data_row_low: u8 },
@@ -41,25 +41,25 @@ impl PixelFetcher {
         self.sprite_pixel_fetcher.need_step()
     }
 
-    pub fn fetch_sprite(&mut self, sprite: Sprite, mmu: &MMU, pixel_fifo: &mut PixelFifo) {
+    pub fn fetch_sprite(&mut self, sprite: Sprite, mmu: &MMU, pixel_fifo: &mut SpritePixelFifo) {
         // println!("FSPRITE: {}", self.x_position_counter);
         self.sprite_pixel_fetcher.fetch(sprite, mmu, pixel_fifo);
     }
 
-    pub fn fetch_window(&mut self, mmu: &MMU, pixel_fifo: &mut PixelFifo) {
+    pub fn fetch_window(&mut self, mmu: &MMU, pixel_fifo: &mut PixelFifo, sprite_pixel_fifo: &mut SpritePixelFifo) {
         assert!(!self.sprite_pixel_fetcher.need_step(), "Should not start fetch window when sprite fetcher still in progress");
         self.x_position_counter = 0;
         self.is_window_mode = true;
         self.current_step = Step::FetchTileDataIndex;
-        self.step(mmu, pixel_fifo);
+        self.step(mmu, pixel_fifo, sprite_pixel_fifo);
         // println!("FSPRITE: {}", self.x_position_counter);
         // self.sprite_pixel_fetcher.fetch(sprite, mmu, pixel_fifo);
     }
 
-    pub fn step(&mut self, mmu: &MMU, pixel_fifo: &mut PixelFifo) {
+    pub fn step(&mut self, mmu: &MMU, pixel_fifo: &mut PixelFifo, sprite_pixel_fifo: &mut SpritePixelFifo) {
         // println!("STEP: {}", self.x_position_counter);
         if self.sprite_pixel_fetcher.need_step() {
-            self.sprite_pixel_fetcher.step(mmu, pixel_fifo);
+            self.sprite_pixel_fetcher.step(mmu, sprite_pixel_fifo);
         } else {
             self.cycle_available += 1;
             match self.current_step {
@@ -86,6 +86,9 @@ impl PixelFetcher {
         let offset = (x_offset + y_offset) & 0x3FF;
         let tile_data_address = tile_map_area.address(offset);
         let tile_data_index = mmu.get(tile_data_address);
+        // if self.is_window_mode {
+        //     println!("ly: {}, address: {:#06X}, index: {:#04X}", ly, tile_data_address, tile_data_index);
+        // }
         // if mmu.lcdc().is_window_enable() {
         //     println!("[w:{}]({},{}) s({},{}) off({},{}) add:{:#06X} idx:{:#04X}", self.is_window_mode, self.x_position_counter, ly, scx, scy, x_offset, y_offset, tile_data_address, tile_data_index);
         // }
@@ -104,7 +107,7 @@ impl PixelFetcher {
         let tile_data_row_address_low = tile_data_address + tile_row_offset;
         let tile_data_row_low = mmu.get(tile_data_row_address_low);
         // if mmu.lcdc().is_window_enable() {
-        //     println!("FTL [w:{}]({},{}) scy:{} off:{} add:{:#06X} data:{:08b}", self.is_window_mode, self.x_position_counter, ly, scy, tile_row_offset, tile_data_row_address_low, tile_data_row_low);
+        //     println!("FTL [w:{}]({},{}) wline:{}, scy:{} off:{} add:{:#06X} data:{:08b}", self.is_window_mode, self.x_position_counter, ly, self.window_line_counter, scy, tile_row_offset, tile_data_row_address_low, tile_data_row_low);
         // }
         self.current_step = Step::FetchTileDataHi { tile_data_row_address_low, tile_data_row_low }
     }
@@ -128,18 +131,10 @@ impl PixelFetcher {
         self.cycle_available -= 2;
         let tile_pixel_row = if mmu.lcdc().is_bg_window_enable() {
             // if mmu.ly()>=8 && mmu.ly()<=15 { println!("Draw bg enabled: ly: {}", mmu.ly()) }
-            if self.is_window_mode {
-                PixelType::from_window_tile_data(tile_data_row_low, tile_data_row_hi)
-            } else {
-                PixelType::from_bg_tile_data(tile_data_row_low, tile_data_row_hi)
-            }
+            Self::pixels_from_bg_tile_data(tile_data_row_low, tile_data_row_hi)
         } else {
             // println!("remove bg: ly:{}", mmu.ly());
-            if self.is_window_mode {
-                [PixelType::Window(0); 8]
-            } else {
-                [PixelType::Background(0); 8]
-            }
+            [0; 8]
         };
 
         // if tile_data_index == 0x16 {
@@ -157,7 +152,7 @@ impl PixelFetcher {
         assert_eq!(self.cycle_available, 0, "Cycle available should 0 but {}", self.cycle_available);
     }
 
-    fn wait_fifo(&mut self, tile_pixel_row: [PixelType; 8], pixel_fifo: &mut PixelFifo) {
+    fn wait_fifo(&mut self, tile_pixel_row: [u8; 8], pixel_fifo: &mut PixelFifo) {
         // println!("WF: {}", self.x_position_counter);
         self.cycle_available -= 1;
         if pixel_fifo.can_push() {
@@ -166,6 +161,19 @@ impl PixelFetcher {
             self.current_step = Step::FetchTileDataIndex;
         }
         assert_eq!(self.cycle_available, 0, "Cycle available should 0 but {}", self.cycle_available);
+    }
+
+    fn pixels_from_bg_tile_data(lo: u8, hi: u8) -> [u8; 8] {
+        [
+            ((lo >> 7) & 1) | (((hi >> 7) & 1) << 1),
+            ((lo >> 6) & 1) | (((hi >> 6) & 1) << 1),
+            ((lo >> 5) & 1) | (((hi >> 5) & 1) << 1),
+            ((lo >> 4) & 1) | (((hi >> 4) & 1) << 1),
+            ((lo >> 3) & 1) | (((hi >> 3) & 1) << 1),
+            ((lo >> 2) & 1) | (((hi >> 2) & 1) << 1),
+            ((lo >> 1) & 1) | (((hi >> 1) & 1) << 1),
+            ((lo >> 0) & 1) | (((hi >> 0) & 1) << 1),
+        ]
     }
 
     pub fn reset(&mut self, is_vblank: bool) {

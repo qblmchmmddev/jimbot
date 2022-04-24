@@ -2,8 +2,8 @@ mod oam_search;
 mod lcd_transfer;
 mod pixel_fetcher;
 mod pixel_fifo;
-mod pixel_type;
 mod sprite_pixel_fetcher;
+mod sprite_pixel_fifo;
 
 use crate::mmu::interrupt_flag::InterruptRequest;
 use crate::mmu::lcdstat::Mode;
@@ -68,7 +68,8 @@ impl PPU {
         } else if !self.enable && lcdc.is_display_enable() {
             self.enable = true;
             self.init_enable = true;
-            stat.set_mode(Mode::OAMSearch);
+            self.scanline = 0;
+            self.scanline_cycle = 8;
         }
         if !self.enable { return; }
         let mut new_stat_interrupt = false;
@@ -79,7 +80,9 @@ impl PPU {
                     mmu.set_ly(0);
                     new_stat_interrupt = new_stat_interrupt || stat.vblank_interrupt();
                 },
-                4 => {
+                4 => if self.init_enable {
+                    self.init_enable = false;
+                } else {
                     stat.set_mode(Mode::OAMSearch);
                     new_stat_interrupt = new_stat_interrupt || stat.oam_interrupt();
                 },
@@ -88,30 +91,28 @@ impl PPU {
             }
             1..=143 => match self.scanline_cycle {
                 0 => {
+                    mmu.set_ly(self.scanline);
                     new_stat_interrupt = new_stat_interrupt || stat.oam_interrupt();
-                    mmu.set_ly(self.scanline)
-                },
+                }
                 4 => {
+                    stat.set_mode(Mode::OAMSearch);
                     let ly_eq_lyc = mmu.ly() == mmu.lyc();
                     new_stat_interrupt = new_stat_interrupt || (ly_eq_lyc && stat.ly_eq_lyc());
                     stat.set_coincidence(ly_eq_lyc);
-                    stat.set_mode(Mode::OAMSearch)
                 }
                 84 => stat.set_mode(Mode::LCDTransfer),
                 _ => {}
             }
             144 => match self.scanline_cycle {
-                0 => {
-                    mmu.set_ly(144);
-                    mmu.request_interrupt(InterruptRequest::VBlank);
-                },
+                0 => mmu.set_ly(144),
                 4 => {
+                    stat.set_mode(Mode::VBlank);
+                    mmu.request_interrupt(InterruptRequest::VBlank);
                     let ly_eq_lyc = mmu.ly() == mmu.lyc();
                     new_stat_interrupt = new_stat_interrupt || (ly_eq_lyc && stat.ly_eq_lyc());
-                    new_stat_interrupt = new_stat_interrupt || stat.vblank_interrupt();
                     new_stat_interrupt = new_stat_interrupt || stat.oam_interrupt();
+                    new_stat_interrupt = new_stat_interrupt || stat.vblank_interrupt();
                     stat.set_coincidence(ly_eq_lyc);
-                    stat.set_mode(Mode::VBlank)
                 }
                 5..=u16::MAX => {
                     new_stat_interrupt = new_stat_interrupt || stat.vblank_interrupt();
@@ -133,16 +134,16 @@ impl PPU {
                 match self.scanline_cycle {
                     0 => mmu.set_ly(153),
                     4 => {
-                        new_stat_interrupt = new_stat_interrupt || stat.oam_interrupt();
                         let ly_eq_lyc = mmu.ly() == mmu.lyc();
                         new_stat_interrupt = new_stat_interrupt || (ly_eq_lyc && stat.ly_eq_lyc());
+                        new_stat_interrupt = new_stat_interrupt || stat.oam_interrupt();
                         stat.set_coincidence(ly_eq_lyc);
                         mmu.set_ly(0)
                     }
                     12 => {
-                        new_stat_interrupt = new_stat_interrupt || stat.oam_interrupt();
                         let ly_eq_lyc = mmu.ly() == mmu.lyc();
                         new_stat_interrupt = new_stat_interrupt || (ly_eq_lyc && stat.ly_eq_lyc());
+                        new_stat_interrupt = new_stat_interrupt || stat.oam_interrupt();
                         stat.set_coincidence(ly_eq_lyc);
                     }
                     _ => {}

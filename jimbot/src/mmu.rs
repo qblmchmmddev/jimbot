@@ -225,7 +225,7 @@ impl MMU {
         let start_source: u16 = ((source_high_nibble as u16) << 8) | 0x0000;
         let end_source: u16 = ((source_high_nibble as u16) << 8) | 0x009F;
 
-        for (i_to, i_from) in (start_source..end_source).enumerate() {
+        for (i_to, i_from) in (start_source..=end_source).enumerate() {
             self.oam[i_to] = self.get(i_from);
         }
     }

@@ -47,6 +47,19 @@ pub fn run_mmu_debugger(
                         }));
                     });
                 });
+
+                ui.collapsing("OAM (0xFE00 - 0xFE9F)", |ui| {
+                    ui.set_max_height(250.);
+                    ScrollArea::vertical().show(ui, |ui| {
+                        ui.label(config_hex(jimbot.mmu().oam(), HexConfig {
+                            title: true,
+                            ascii: false,
+                            width: 16,
+                            group: 4,
+                            chunk: 1,
+                        }));
+                    });
+                });
                 ui.label(format!("LY:{}", jimbot.mmu().ly()));
                 let bgp: u8 = jimbot.mmu().bgp().into();
                 ui.label(format!("BPG:{:08b}", bgp));

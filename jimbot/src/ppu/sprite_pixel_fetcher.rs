@@ -1,8 +1,8 @@
 use std::process::id;
 use crate::mmu::MMU;
-use crate::mmu::sprite::Sprite;
-use crate::ppu::pixel_fifo::PixelFifo;
-use crate::ppu::pixel_type::PixelType;
+use crate::mmu::sprite::{Flag, Sprite};
+use crate::ppu::pixel_fifo::{PixelFifo};
+use crate::ppu::sprite_pixel_fifo::SpritePixelFifo;
 
 #[derive(Debug)]
 pub enum Step {
@@ -27,7 +27,7 @@ impl Default for SpritePixelFetcher {
 }
 
 impl SpritePixelFetcher {
-    pub fn fetch(&mut self, sprite: Sprite, mmu: &MMU, pixel_fifo: &mut PixelFifo) {
+    pub fn fetch(&mut self, sprite: Sprite, mmu: &MMU, pixel_fifo: &mut SpritePixelFifo) {
         self.current_step = Step::FetchTileDataLow { sprite };
         self.step(mmu, pixel_fifo);
     }
@@ -39,7 +39,7 @@ impl SpritePixelFetcher {
         }
     }
 
-    pub fn step(&mut self, mmu: &MMU, pixel_fifo: &mut PixelFifo) {
+    pub fn step(&mut self, mmu: &MMU, pixel_fifo: &mut SpritePixelFifo) {
         self.cycle_available += 1;
         match self.current_step {
             Step::Idle => panic!("Is idling no need to step"),
@@ -90,48 +90,31 @@ impl SpritePixelFetcher {
         }
     }
 
-    fn push_to_fifo(&mut self, sprite: Sprite, tile_data_row_low: u8, tile_data_row_hi: u8, pixel_fifo: &mut PixelFifo, mmu: &MMU) {
+    fn push_to_fifo(&mut self, sprite: Sprite, tile_data_row_low: u8, tile_data_row_hi: u8, pixel_fifo: &mut SpritePixelFifo, mmu: &MMU) {
         if self.cycle_available < 2 { return; }
         self.cycle_available -= 2;
         let mut sprite_tile_pixels = if mmu.lcdc().is_sprite_enable() {
-            PixelType::from_sprite_tile_data(tile_data_row_low, tile_data_row_hi, sprite.flags().palette_1())
+            Self::pixels_from_sprite_tile_data(tile_data_row_low, tile_data_row_hi, sprite.flags().clone())
         } else {
-            [PixelType::Sprite { pixels: 0, palette_1: sprite.flags().palette_1() }; 8]
+            [(0, sprite.flags().clone()); 8]
         };
         if sprite.flags().is_x_flipped() { sprite_tile_pixels.reverse() };
-        let mut fifo_front_8 = pixel_fifo.pop_front_8();
-        for i in 0..8 {
-            let fifo_px = fifo_front_8[i];
-            let sprite_px = sprite_tile_pixels[i];
-            match (fifo_px, sprite_px) {
-                (PixelType::Background(bg_pixels), PixelType::Sprite { pixels: sprite_pixels, palette_1: _ }) => {
-                    if sprite.flags().bg_prior() {
-                        if bg_pixels == 0 && sprite_pixels > 0 { fifo_front_8[i] = sprite_px; }
-                    } else {
-                        if sprite_pixels > 0 { fifo_front_8[i] = sprite_px; }
-                    }
-                }
-                (PixelType::Window(window_pixels), PixelType::Sprite { pixels: sprite_pixels, palette_1: _ }) => {
-                    if sprite.flags().bg_prior() {
-                        if window_pixels == 0 && sprite_pixels > 0 { fifo_front_8[i] = sprite_px; }
-                    } else {
-                        if sprite_pixels > 0 { fifo_front_8[i] = sprite_px; }
-                    }
-                    // if !sprite.flags().bg_prior() {
-                    //     if window_pixels == 0 && sprite_pixels > 0 { fifo_front_8[i] = sprite_px }
-                    // }
-                    // if sprite.flags().bg_prior()  {
-                    //     if bg_pixels == 0 && sprite_pixels > 0 { fifo_front_8[i] = sprite_px; }
-                    // } else {
-                    //     if sprite_pixels > 0 { fifo_front_8[i] = sprite_px; }
-                    // }
-                }
-                _ => {}
-            }
-        }
-        pixel_fifo.push_tile_pixel_row_front(fifo_front_8);
+        pixel_fifo.push_tile_pixel_row(sprite_tile_pixels);
         assert_eq!(self.cycle_available, 0, "Cycle available should 0 but {}", self.cycle_available);
         self.current_step = Step::Idle;
+    }
+
+    fn pixels_from_sprite_tile_data(lo: u8, hi: u8, flag: Flag) -> [(u8, Flag); 8] {
+        [
+            (((lo >> 7) & 1) | (((hi >> 7) & 1) << 1), flag),
+            (((lo >> 6) & 1) | (((hi >> 6) & 1) << 1), flag),
+            (((lo >> 5) & 1) | (((hi >> 5) & 1) << 1), flag),
+            (((lo >> 4) & 1) | (((hi >> 4) & 1) << 1), flag),
+            (((lo >> 3) & 1) | (((hi >> 3) & 1) << 1), flag),
+            (((lo >> 2) & 1) | (((hi >> 2) & 1) << 1), flag),
+            (((lo >> 1) & 1) | (((hi >> 1) & 1) << 1), flag),
+            (((lo >> 0) & 1) | (((hi >> 0) & 1) << 1), flag),
+        ]
     }
 
     pub fn reset(&mut self, is_vblank: bool) {
