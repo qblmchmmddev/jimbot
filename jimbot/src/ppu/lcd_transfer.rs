@@ -41,7 +41,7 @@ impl LCDTransfer {
         }
 
         if !self.pixel_fetcher.fetching_sprite() {
-            if self.pixel_to_discard == 0 && !self.pixel_fetcher.is_window_mode() && mmu.lcdc().is_window_enable() && self.window_line && self.x >= (mmu.wx() - 7) as usize {
+            if self.pixel_to_discard == 0 && !self.pixel_fetcher.is_window_mode() && mmu.lcdc().is_window_enable() && self.window_line && self.x >= mmu.wx().wrapping_sub(7) as usize {
                 self.pixel_fifo.reset();
                 self.pixel_fetcher.fetch_window(mmu, &mut self.pixel_fifo, &mut self.sprite_pixel_fifo);
                 // sprite_buffer.clear();

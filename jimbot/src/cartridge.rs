@@ -9,6 +9,7 @@ use crate::cartridge::cartridge_type::CartridgeType;
 use crate::cartridge::metadata::Metadata;
 use crate::cartridge::ram_size_type::RamSize;
 use crate::cartridge::rom_size_type::RomSize;
+use crate::saver::Saver;
 
 use self::cartridge_mbc5::CartridgeMBC5;
 use self::cartridge_mbc5_ram_battery::CartridgeMBC5RamBattery;
@@ -46,14 +47,14 @@ pub trait Cartridge: Sync + Send {
     // }
 }
 
-pub fn new_cartridge_from_bytes(bytes: Vec<u8>) -> Box<dyn Cartridge> {
+pub fn new_cartridge_from_bytes(saver: Option<Box<dyn Saver>>, bytes: Vec<u8>) -> Box<dyn Cartridge> {
     let metadata = Metadata::from(&bytes);
     match metadata.cartridge_type() {
         CartridgeType::RomOnly => Box::new(CartridgeRomOnly::new(bytes)),
         CartridgeType::RomMbc1 => Box::new(CartridgeMBC1::new(metadata, bytes)),
         CartridgeType::RomMbc5 => Box::new(CartridgeMBC5::new(bytes)),
         CartridgeType::RomMbc1Ram => Box::new(CartridgeMBC1Ram::new(metadata, bytes)),
-        CartridgeType::RomMbc1RamBattery => Box::new(CartridgeMBC1RamBattery::new(None, metadata, bytes)),
+        CartridgeType::RomMbc1RamBattery => Box::new(CartridgeMBC1RamBattery::new(saver, None, metadata, bytes)),
         CartridgeType::RomMbc2Battery => Box::new(CartridgeMBC2Battery::new(None, metadata, bytes)),
         CartridgeType::RomMbc3RamBattery => Box::new(CartridgeMBC3RamBattery::new(None, metadata, bytes)),
         CartridgeType::RomMbc5RamBattery => Box::new(CartridgeMBC5RamBattery::new(None, metadata, bytes)),
@@ -70,7 +71,7 @@ pub fn new_cartridge_from_file_path(file_path: String) -> Box<dyn Cartridge> {
         CartridgeType::RomMbc1 => Box::new(CartridgeMBC1::new(metadata, bytes)),
         CartridgeType::RomMbc5 => Box::new(CartridgeMBC5::new(bytes)),
         CartridgeType::RomMbc1Ram => Box::new(CartridgeMBC1Ram::new(metadata, bytes)),
-        CartridgeType::RomMbc1RamBattery => Box::new(CartridgeMBC1RamBattery::new(Some(file_path), metadata, bytes)),
+        CartridgeType::RomMbc1RamBattery => Box::new(CartridgeMBC1RamBattery::new(None, Some(file_path), metadata, bytes)),
         CartridgeType::RomMbc2Battery => Box::new(CartridgeMBC2Battery::new(Some(file_path), metadata, bytes)),
         CartridgeType::RomMbc3RamBattery => Box::new(CartridgeMBC3RamBattery::new(Some(file_path), metadata, bytes)),
         CartridgeType::RomMbc5RamBattery => Box::new(CartridgeMBC5RamBattery::new(Some(file_path), metadata, bytes)),

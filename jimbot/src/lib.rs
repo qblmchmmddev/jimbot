@@ -6,5 +6,6 @@ mod apu;
 mod wram;
 mod cartridge;
 mod timer;
+pub mod saver;
 
 

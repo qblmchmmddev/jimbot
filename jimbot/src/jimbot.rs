@@ -5,6 +5,7 @@ use crate::cpu::CPU;
 use crate::mmu::{joypad, MMU};
 use crate::ppu::PPU;
 use std::env;
+use crate::saver::Saver;
 
 pub struct Jimbot {
     mmu: MMU,
@@ -32,9 +33,9 @@ impl Default for Jimbot {
 }
 
 impl Jimbot {
-    pub fn new_with_cartridge_bytes(bytes: Vec<u8>) -> Self {
+    pub fn new_with_cartridge_bytes(saver: Option<Box<dyn Saver>> ,bytes: Vec<u8>) -> Self {
         let boot_rom = include_bytes!("../roms/dmg_boot.bin").to_owned();
-        let cartridge = cartridge::new_cartridge_from_bytes(bytes);
+        let cartridge = cartridge::new_cartridge_from_bytes(saver, bytes);
         Self {
             mmu: MMU::new(boot_rom, Some(cartridge)),
             cpu: CPU::default(),

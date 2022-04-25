@@ -1,7 +1,9 @@
 use cpal::{traits::{DeviceTrait, HostTrait, StreamTrait}, Device, Stream};
 use jimbot::jimbot::Jimbot;
 use ringbuf::{Producer, RingBuffer};
-use wasm_bindgen::{prelude::wasm_bindgen, JsValue};
+use wasm_bindgen::{prelude::wasm_bindgen, JsValue, JsCast};
+use wasm_bindgen::closure::Closure;
+use jimbot::saver::Saver;
 
 #[wasm_bindgen]
 pub struct JimbotWeb {
@@ -10,12 +12,51 @@ pub struct JimbotWeb {
     audio_producer: Producer<f32>,
 }
 
+struct WebSaver {
+    // store: web_sys::Storage,
+}
+
+static mut SAVE_DATA: Vec<u8> = Vec::new();
+static mut TITLE: String = String::new();
+
+impl Saver for WebSaver {
+    fn save(&self, title: String, data: Vec<u8>, at: u64) {
+        unsafe {
+            TITLE = title;
+            SAVE_DATA = data;
+        }
+        // let store = web_sys::window().unwrap().local_storage().unwrap().unwrap();
+        // store.set_item(&title, &base64::encode(&data));
+    }
+
+    fn load(&self, title: String) -> Option<Vec<u8>> {
+        let store = web_sys::window().unwrap().local_storage().unwrap().unwrap();
+        if let Some(base64data) = store.get_item(&title).unwrap() {
+            if let Ok(data) = base64::decode(base64data) {
+                unsafe { SAVE_DATA = data.clone(); }
+                Some(data)
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+    }
+}
+
 #[wasm_bindgen(start)]
 pub fn main_js() -> Result<(), JsValue> {
-    // This provides better error messages in debug mode.
-    // It's disabled in release mode so it doesn't bloat up the file size.
+    let window = web_sys::window().unwrap();
+    let cb = Closure::wrap(Box::new(||{
+        let store = web_sys::window().unwrap().local_storage().unwrap().unwrap();
+        unsafe {
+            store.set_item(&TITLE, &base64::encode(&SAVE_DATA)).unwrap();
+        }
+    }) as Box<dyn FnMut()>);
+    window.set_onbeforeunload(Some(cb.as_ref().unchecked_ref()));
+    window.set_onpagehide(Some(cb.as_ref().unchecked_ref()));
+    cb.forget();
     console_error_panic_hook::set_once();
-
     Ok(())
 }
 
@@ -47,7 +88,7 @@ impl JimbotWeb {
             .unwrap();
 
         stream.play().expect("Cannot play audio");
-        let jimbot = Jimbot::new_with_cartridge_bytes(cartridge_bytes.to_vec());
+        let jimbot = Jimbot::new_with_cartridge_bytes(Some(Box::new(WebSaver{})), cartridge_bytes.to_vec());
         Self {
             jimbot,
             _stream: stream,

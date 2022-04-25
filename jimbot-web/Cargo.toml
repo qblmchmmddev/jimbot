@@ -12,4 +12,7 @@ cpal = {version = "0.13.5", features = ["wasm-bindgen"]}
 ringbuf = "0.2.8"
 jimbot = {path = "../jimbot"}
 wasm-bindgen = "0.2.80"
+web-sys = { version = "0.3.57", features = ["Storage", "Window", "console"]}
+base64 = "0.13.0"
+js-sys = "0.3.57"
 console_error_panic_hook = "0.1.7"
