@@ -5,10 +5,8 @@ use std::io::{Read, Write};
 #[cfg(not(target_arch = "wasm32"))]
 use std::os::unix::fs::FileExt;
 use std::path::{Path, PathBuf};
-use crate::saver::Saver;
 
 pub struct CartridgeMBC1RamBattery {
-    saver: Option<Box<dyn Saver>>,
     save_file: Option<File>,
     metadata: Metadata,
     rom_hi_bank_number: u16,
@@ -90,9 +88,6 @@ impl Cartridge for CartridgeMBC1RamBattery {
                     if let Some(save_file) = self.save_file.as_mut() {
                         save_file.write_at(&self.ram[address..=address], address as u64);
                     }
-                    if let Some(saver) = self.saver.as_ref() {
-                        saver.save(self.metadata.title().to_string(), self.ram.clone(), address as u64)
-                    }
                 } else {
                     println!(
                         "Cartridge MBC1 WRITE TO DISABLED RAM {:#06X} {:04X}",
@@ -107,17 +102,21 @@ impl Cartridge for CartridgeMBC1RamBattery {
     fn data(&self) -> &Vec<u8> {
         &self.data
     }
+
+    fn metadata(&self) -> &Metadata {
+        &self.metadata
+    }
+
+    fn save_data_mut(&mut self) -> Option<&mut Vec<u8>> {
+        Some(&mut self.ram)
+    }
+
+    fn save_data(&self) -> Option<&Vec<u8>> { Some(&self.ram) }
 }
 
 impl CartridgeMBC1RamBattery {
-    pub fn new(saver: Option<Box<dyn Saver>>, file_path: Option<String>, metadata: Metadata, bytes: Vec<u8>) -> Self {
+    pub fn new(file_path: Option<String>, metadata: Metadata, bytes: Vec<u8>) -> Self {
         let mut ram = vec![0u8; metadata.ram_size().size as usize];
-
-        if let Some(saver) = saver.as_ref() {
-            if let Some(data) = saver.load(metadata.title().to_string()) {
-                ram = data
-            }
-        }
 
         let save_file = if let Some(file_path) = file_path {
             let mut save_file_path = Path::new(&file_path).to_owned();
@@ -166,7 +165,6 @@ impl CartridgeMBC1RamBattery {
         };
 
         Self {
-            saver,
             save_file,
             metadata,
             rom_hi_bank_number: 1,

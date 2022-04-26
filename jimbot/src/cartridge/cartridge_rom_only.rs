@@ -1,6 +1,8 @@
 use crate::cartridge::Cartridge;
+use crate::cartridge::metadata::Metadata;
 
 pub struct CartridgeRomOnly {
+    metadata: Metadata,
     data: Vec<u8>,
 }
 
@@ -15,6 +17,17 @@ impl Cartridge for CartridgeRomOnly {
     fn data(&self) -> &Vec<u8> {
         &self.data
     }
+
+    fn metadata(&self) -> &Metadata {
+        &self.metadata
+    }
+
+    fn save_data_mut(&mut self) -> Option<&mut Vec<u8>> {
+        None
+    }
+
+    fn save_data(&self) -> Option<&Vec<u8>> { None }
+
 }
 
 
@@ -36,9 +49,10 @@ impl CartridgeRomOnly {
     // }
 
     pub fn new(bytes: Vec<u8>) -> Self {
+        let metadata = Metadata::from(&bytes);
         let data = bytes;
-        // let size = RamSize::from(data[Self::RAM_SIZE_ADDRESS]);
         let cartridge = CartridgeRomOnly {
+            metadata,
             data,
             // ram: vec![0; size.size as usize],
         };

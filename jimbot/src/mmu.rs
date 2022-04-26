@@ -235,6 +235,9 @@ impl MMU {
     pub fn cartridge(&self) -> &Option<Box<dyn Cartridge>> {
         &self.cart
     }
+    pub fn cartridge_mut(&mut self) -> &mut Option<Box<dyn Cartridge>> {
+        &mut self.cart
+    }
     pub fn vram(&self) -> &[u8; 0x2000] {
         &self.vram
     }

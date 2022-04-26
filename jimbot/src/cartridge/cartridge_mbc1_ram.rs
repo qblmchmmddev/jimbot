@@ -72,6 +72,17 @@ impl Cartridge for CartridgeMBC1Ram {
     fn data(&self) -> &Vec<u8> {
         &self.data
     }
+
+    fn metadata(&self) -> &Metadata {
+        &self.metadata
+    }
+
+    fn save_data_mut(&mut self) -> Option<&mut Vec<u8>> {
+        None
+    }
+
+    fn save_data(&self) -> Option<&Vec<u8>> { None }
+
 }
 
 impl CartridgeMBC1Ram {

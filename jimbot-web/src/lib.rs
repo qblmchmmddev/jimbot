@@ -1,61 +1,19 @@
+use std::sync::{Arc, Mutex};
 use cpal::{traits::{DeviceTrait, HostTrait, StreamTrait}, Device, Stream};
 use jimbot::jimbot::Jimbot;
 use ringbuf::{Producer, RingBuffer};
 use wasm_bindgen::{prelude::wasm_bindgen, JsValue, JsCast};
 use wasm_bindgen::closure::Closure;
-use jimbot::saver::Saver;
 
 #[wasm_bindgen]
 pub struct JimbotWeb {
-    jimbot: Jimbot,
+    jimbot: Arc<Mutex<Jimbot>>,
     _stream: Stream,
     audio_producer: Producer<f32>,
 }
 
-struct WebSaver {
-    // store: web_sys::Storage,
-}
-
-static mut SAVE_DATA: Vec<u8> = Vec::new();
-static mut TITLE: String = String::new();
-
-impl Saver for WebSaver {
-    fn save(&self, title: String, data: Vec<u8>, at: u64) {
-        unsafe {
-            TITLE = title;
-            SAVE_DATA = data;
-        }
-        // let store = web_sys::window().unwrap().local_storage().unwrap().unwrap();
-        // store.set_item(&title, &base64::encode(&data));
-    }
-
-    fn load(&self, title: String) -> Option<Vec<u8>> {
-        let store = web_sys::window().unwrap().local_storage().unwrap().unwrap();
-        if let Some(base64data) = store.get_item(&title).unwrap() {
-            if let Ok(data) = base64::decode(base64data) {
-                unsafe { SAVE_DATA = data.clone(); }
-                Some(data)
-            } else {
-                None
-            }
-        } else {
-            None
-        }
-    }
-}
-
 #[wasm_bindgen(start)]
 pub fn main_js() -> Result<(), JsValue> {
-    let window = web_sys::window().unwrap();
-    let cb = Closure::wrap(Box::new(||{
-        let store = web_sys::window().unwrap().local_storage().unwrap().unwrap();
-        unsafe {
-            store.set_item(&TITLE, &base64::encode(&SAVE_DATA)).unwrap();
-        }
-    }) as Box<dyn FnMut()>);
-    window.set_onbeforeunload(Some(cb.as_ref().unchecked_ref()));
-    window.set_onpagehide(Some(cb.as_ref().unchecked_ref()));
-    cb.forget();
     console_error_panic_hook::set_once();
     Ok(())
 }
@@ -88,9 +46,37 @@ impl JimbotWeb {
             .unwrap();
 
         stream.play().expect("Cannot play audio");
-        let jimbot = Jimbot::new_with_cartridge_bytes(Some(Box::new(WebSaver{})), cartridge_bytes.to_vec());
+        web_sys::console::log_1(&format!("Cart size: {}", cartridge_bytes.len()).into());
+        let mut jimbot = Jimbot::new_with_cartridge_bytes(cartridge_bytes.to_vec());
+        let cart = jimbot.cartridge().as_ref();
+        web_sys::console::log_1(&format!("Cart loaded: {}", cart.is_some()).into());
+        let cart = cart.expect("No Cartridge");
+        web_sys::console::log_1(&format!("{:#?}", cart.metadata()).into());
+        let title = cart.metadata().title().to_string();
+        if let Some(save_data) = jimbot.save_data_mut() {
+            let store = web_sys::window().unwrap().local_storage().unwrap().unwrap();
+            if let Some(base64data) = store.get_item(&title).unwrap() {
+                if let Ok(data) = base64::decode(base64data) {
+                    save_data.copy_from_slice(data.as_slice());
+                    web_sys::console::log_1(&format!("Saved data loaded: {}", &title).into());
+                }
+            }
+        }
+        let window = web_sys::window().unwrap();
+        let jimbot = Arc::new(Mutex::new(jimbot));
+        let jimbot_cb = jimbot.clone();
+        let cb = Closure::wrap(Box::new(move ||{
+            let store = web_sys::window().unwrap().local_storage().unwrap().unwrap();
+            let jimbot = jimbot_cb.lock().unwrap();
+            if let Some(save_data) = jimbot.save_data() {
+                    store.set_item(jimbot.mmu().cartridge().as_ref().unwrap().metadata().title(), &base64::encode(save_data)).unwrap();
+            }
+        }) as Box<dyn FnMut()>);
+        window.set_onbeforeunload(Some(cb.as_ref().unchecked_ref()));
+        window.set_onpagehide(Some(cb.as_ref().unchecked_ref()));
+        cb.forget();
         Self {
-            jimbot,
+            jimbot: jimbot.clone(),
             _stream: stream,
             audio_producer,
         }
@@ -99,12 +85,13 @@ impl JimbotWeb {
     pub fn run(&mut self, lcd_data: &mut [u8]) {
         const M_CYCLE_PER_FRAME: f32 = (4194304.0 / 4.0) / 60.0;
         let mut current_cycle = 0.0f32;
+        let mut jimbot = self.jimbot.lock().unwrap();
         while current_cycle < M_CYCLE_PER_FRAME {
-            self.jimbot.run();
+            jimbot.run();
             current_cycle += 1.;
         }
-        self.audio_producer.push_slice(self.jimbot.get_sound_data().as_slice());
-        let pixels = self.jimbot.ppu().lcd();
+        self.audio_producer.push_slice(jimbot.get_sound_data().as_slice());
+        let pixels = jimbot.ppu().lcd();
         for y in 0..144 {
             for x in 0..160 {
                 let pixel = pixels[x][y];
@@ -114,11 +101,11 @@ impl JimbotWeb {
     }
 
     pub fn joypad_release(&mut self, key: jimbot::mmu::joypad::Key) {
-        self.jimbot.joypad_release(key); 
+        self.jimbot.lock().unwrap().joypad_release(key);
     }
 
 
     pub fn joypad_press(&mut self, key: jimbot::mmu::joypad::Key) {
-        self.jimbot.joypad_press(key);
+        self.jimbot.lock().unwrap().joypad_press(key);
     }
 }

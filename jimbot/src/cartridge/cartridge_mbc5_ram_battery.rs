@@ -102,6 +102,17 @@ impl Cartridge for CartridgeMBC5RamBattery {
     fn data(&self) -> &Vec<u8> {
         &self.data
     }
+
+    fn metadata(&self) -> &Metadata {
+        &self.metadata
+    }
+
+    fn save_data(&self) -> Option<&Vec<u8>> { Some(&self.ram) }
+
+    fn save_data_mut(&mut self) -> Option<&mut Vec<u8>> {
+        Some(&mut self.ram)
+    }
+
 }
 
 impl CartridgeMBC5RamBattery {

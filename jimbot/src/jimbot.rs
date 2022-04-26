@@ -5,7 +5,6 @@ use crate::cpu::CPU;
 use crate::mmu::{joypad, MMU};
 use crate::ppu::PPU;
 use std::env;
-use crate::saver::Saver;
 
 pub struct Jimbot {
     mmu: MMU,
@@ -33,9 +32,9 @@ impl Default for Jimbot {
 }
 
 impl Jimbot {
-    pub fn new_with_cartridge_bytes(saver: Option<Box<dyn Saver>> ,bytes: Vec<u8>) -> Self {
+    pub fn new_with_cartridge_bytes(bytes: Vec<u8>) -> Self {
         let boot_rom = include_bytes!("../roms/dmg_boot.bin").to_owned();
-        let cartridge = cartridge::new_cartridge_from_bytes(saver, bytes);
+        let cartridge = cartridge::new_cartridge_from_bytes(bytes);
         Self {
             mmu: MMU::new(boot_rom, Some(cartridge)),
             cpu: CPU::default(),
@@ -85,5 +84,27 @@ impl Jimbot {
 
     pub fn joypad_release(&mut self, key: joypad::Key) {
         self.mmu.joypad_release(key);
+    }
+
+    pub fn save_data(&self) -> Option<&Vec<u8>> {
+        if let Some(cartridge) = self.mmu.cartridge() {
+            if let Some(save_data) = cartridge.save_data() {
+                return Some(save_data)
+            }
+        }
+        None
+    }
+
+    pub fn save_data_mut(&mut self) -> Option<&mut Vec<u8>> {
+        if let Some(cartridge) = self.mmu.cartridge_mut() {
+            if let Some(save_data) = cartridge.save_data_mut() {
+                return Some(save_data)
+            }
+        }
+        None
+    }
+
+    pub fn cartridge(&self) -> &Option<Box<dyn Cartridge>> {
+        self.mmu.cartridge()
     }
 }
