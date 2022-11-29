@@ -152,7 +152,7 @@
         document.body.appendChild(d3)
         document.body.appendChild(d4)
         let pixels = new Uint8Array(w * h * 4)
-        let texture = new PIXI.Texture.fromBuffer(pixels, w, h)
+        let texture = PIXI.Texture.fromBuffer(pixels, w, h)
         let lcd = new PIXI.Sprite(texture)
         lcd.width = w * 2
         lcd.height = h * 2
