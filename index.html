@@ -70,6 +70,7 @@
         d0.style.textAlign = "center"
         PIXI.settings.SCALE_MODE = PIXI.SCALE_MODES.NEAREST
         let app = new PIXI.Application({ width: w * 2, height: h * 2, resolution: 3 })
+        app.ticker.maxFPS = 60
         app.view.style.margin = "auto"
         let b = createButton("cp", "Insert cartridge")
         b.onclick = () => {
