@@ -1,15 +1,13 @@
 use bevy::prelude::ResMut;
 use bevy_egui::egui::{FontData, FontDefinitions, FontFamily, TextStyle};
-use bevy_egui::EguiContext;
+use bevy_egui::{EguiContext, EguiContexts};
 
-pub mod mmu_debugger;
 pub mod cpu_debugger;
 pub mod lcd_debugger;
+pub mod mmu_debugger;
 pub mod ppu_debugger;
 
-pub fn setup_debugger(
-    mut ctx: ResMut<EguiContext>,
-) {
+pub fn setup_debugger(mut ctx: EguiContexts) {
     let mut font = FontDefinitions::default();
 
     font.font_data.insert(
@@ -26,12 +24,10 @@ pub fn setup_debugger(
         .unwrap()
         .insert(0, "mn".to_owned());
 
-    ctx.ctx_mut()
-        .set_fonts(font);
+    ctx.ctx_mut().set_fonts(font);
 
     let mut style = (*ctx.ctx_mut().style()).clone();
     style.text_styles.get_mut(&TextStyle::Small).unwrap().size = 1.0;
 
-    ctx.ctx_mut()
-        .set_style(style);
+    ctx.ctx_mut().set_style(style);
 }

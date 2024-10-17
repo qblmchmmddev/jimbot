@@ -1,10 +1,13 @@
-use bevy::prelude::{Commands, Res, ResMut};
+use bevy::prelude::{Commands, Res, ResMut, Resource};
 use bevy_egui::egui::{ScrollArea, TextStyle, Window};
-use bevy_egui::EguiContext;
-use pretty_hex::{config_hex, HexConfig};
+use bevy_egui::{EguiContext, EguiContexts};
 use jimbot::cpu::registers::R16;
 use jimbot::jimbot::Jimbot;
+use pretty_hex::{config_hex, HexConfig};
 
+use crate::JimbotResource;
+
+#[derive(Resource)]
 pub struct CpuDebugger {
     pub instructions: Vec<String>,
 }
@@ -21,12 +24,12 @@ pub fn setup_cpu_debugger(mut commands: Commands) {
     commands.insert_resource(CpuDebugger::default())
 }
 
-
 pub fn run_cpu_debugger(
-    mut jimbot: ResMut<Jimbot>,
+    mut jimbot: ResMut<JimbotResource>,
     mut cpu_debugger: ResMut<CpuDebugger>,
-    mut egui_context: ResMut<EguiContext>,
+    mut egui_context: EguiContexts,
 ) {
+    let jimbot = &mut jimbot.0;
     // let op = jimbot.cpu().cycle_op();
     // if jimbot.error_message().is_none() {
     //     match (op, p1, p2) {
@@ -52,7 +55,7 @@ pub fn run_cpu_debugger(
                     let row_height = ui.text_style_height(&text_style);
                     ui.indent("", |ui| {
                         ui.set_max_height(250.);
-                        ScrollArea::vertical().stick_to_bottom().show_rows(
+                        ScrollArea::vertical().stick_to_bottom(true).show_rows(
                             ui,
                             row_height,
                             cpu_debugger.instructions.len(),

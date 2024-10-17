@@ -8,6 +8,6 @@ edition = "2021"
 jimbot = { path = "../jimbot" }
 ringbuf = "0.2.7"
 cpal = { version = "0.13.5", features = ["wasm-bindgen"] }
-bevy = "0.6.1"
-bevy_egui = "0.12.1"
+bevy = "0.14"
+bevy_egui = "0.30"
 pretty-hex = "0.2.1"

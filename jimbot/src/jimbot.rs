@@ -89,7 +89,7 @@ impl Jimbot {
     pub fn save_data(&self) -> Option<&Vec<u8>> {
         if let Some(cartridge) = self.mmu.cartridge() {
             if let Some(save_data) = cartridge.save_data() {
-                return Some(save_data)
+                return Some(save_data);
             }
         }
         None
@@ -98,7 +98,7 @@ impl Jimbot {
     pub fn save_data_mut(&mut self) -> Option<&mut Vec<u8>> {
         if let Some(cartridge) = self.mmu.cartridge_mut() {
             if let Some(save_data) = cartridge.save_data_mut() {
-                return Some(save_data)
+                return Some(save_data);
             }
         }
         None

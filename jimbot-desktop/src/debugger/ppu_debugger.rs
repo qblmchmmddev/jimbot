@@ -1,8 +1,10 @@
 use bevy::prelude::{Commands, Res, ResMut};
 use bevy_egui::egui::{RichText, ScrollArea, TextStyle, Window};
-use bevy_egui::EguiContext;
-use pretty_hex::{config_hex, HexConfig};
+use bevy_egui::{EguiContext, EguiContexts};
 use jimbot::jimbot::Jimbot;
+use pretty_hex::{config_hex, HexConfig};
+
+use crate::JimbotResource;
 
 // pub struct CpuDebugger {
 //     pub instructions: Vec<String>,
@@ -20,12 +22,12 @@ use jimbot::jimbot::Jimbot;
 //     commands.insert_resource(CpuDebugger::default())
 // }
 
-
 pub fn run_ppu_debugger(
-    jimbot: Res<Jimbot>,
+    jimbot: Res<JimbotResource>,
     // mut cpu_debugger: ResMut<CpuDebugger>,
-    mut egui_context: ResMut<EguiContext>,
+    mut egui_context: EguiContexts,
 ) {
+    let jimbot = &jimbot.0;
     Window::new("PPU")
         .resizable(true)
         .show(egui_context.ctx_mut(), |ui| {
@@ -42,16 +44,17 @@ pub fn run_ppu_debugger(
                             }
                         }
                         ui.label(
-                            RichText::new(
-                                config_hex(&lcd_flat, HexConfig {
+                            RichText::new(config_hex(
+                                &lcd_flat,
+                                HexConfig {
                                     title: false,
                                     ascii: false,
                                     width: 160,
                                     group: 160,
                                     chunk: 1,
-                                })
-                            )
-                                .text_style(TextStyle::Small)
+                                },
+                            ))
+                            .text_style(TextStyle::Small),
                         );
                     });
                 });
