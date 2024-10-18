@@ -1,12 +1,15 @@
 {
   "name": "jimbot-web",
+  "type": "module",
   "version": "0.1.0",
   "files": [
     "jimbot_web_bg.wasm",
     "jimbot_web.js",
     "jimbot_web.d.ts"
   ],
-  "module": "jimbot_web.js",
+  "main": "jimbot_web.js",
   "types": "jimbot_web.d.ts",
-  "sideEffects": false
+  "sideEffects": [
+    "./snippets/*"
+  ]
 }
