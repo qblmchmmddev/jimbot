@@ -19,7 +19,7 @@
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <script src="https://pixijs.download/release/pixi.js"></script>
+    <script src="https://pixijs.download/v8.5.1/pixi.min.js"></script>
     <title>Jimbot</title>
 </head>
 
@@ -68,9 +68,9 @@
 
         let d0 = document.createElement("div")
         d0.style.textAlign = "center"
-        PIXI.settings.SCALE_MODE = PIXI.SCALE_MODES.NEAREST
-        let app = new PIXI.Application({ width: w * 2, height: h * 2, resolution: 3 })
-        app.ticker.maxFPS = 60
+        let app = new PIXI.Application()
+        await app.init({})
+        PIXI.Ticker.shared.maxFPS = 60
         app.view.style.margin = "auto"
         let b = createButton("cp", "Insert cartridge")
         b.onclick = () => {
@@ -82,12 +82,13 @@
             var wh = Math.max(document.documentElement.clientHeight, window.innerHeight || 0);
             let ch = ww * h / w
             if (ch <= wh) {
-                app.view.style.width = "" + ww + "px"
-                app.view.style.height = "" + ch + "px"
+                app.canvas.style.width = "" + ww + "px"
+                app.canvas.style.height = "" + ch + "px"
             } else {
-                app.view.style.width = "" + wh * w / h + "px"
-                app.view.style.height = "" + wh + "px"
+                app.canvas.style.width = "" + wh * w / h + "px"
+                app.canvas.style.height = "" + wh + "px"
             }
+            app.renderer.resize(w*2, h*2)
         }
         window.onresize = calc_size
         calc_size()
@@ -97,7 +98,7 @@
         t.style.color = "white"
         d0.appendChild(t)
         d0.appendChild(b)
-        d0.appendChild(app.view)
+        d0.appendChild(app.canvas)
         document.body.appendChild(d0)
         let d = document.createElement("div")
         let da = document.createElement("div")
@@ -153,7 +154,7 @@
         document.body.appendChild(d3)
         document.body.appendChild(d4)
         let pixels = new Uint8Array(w * h * 4)
-        let texture = PIXI.Texture.fromBuffer(pixels, w, h)
+        let texture = PIXI.Texture.from({resource: pixels,width: w, height: h, scaleMode: 'nearest'})
         let lcd = new PIXI.Sprite(texture)
         lcd.width = w * 2
         lcd.height = h * 2
@@ -179,7 +180,7 @@
                 pixels[idx + 2] = (color >> 0) & 0xff
                 pixels[idx + 3] = 0xFF
             }
-            texture.baseTexture.resource.update()
+            texture.source.update()
         })
         preventLongPressMenu(document.getElementsByTagName('button'));
 
