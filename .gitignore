@@ -1,4 +1,5 @@
 .idea
 target
 jimbot-desktop/dist
+jimbot-web/dist
 Cargo.lock
