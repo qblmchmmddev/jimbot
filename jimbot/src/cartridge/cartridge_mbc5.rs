@@ -2,8 +2,10 @@ use crate::cartridge::metadata::Metadata;
 use crate::cartridge::Cartridge;
 use std::fs::{File, OpenOptions};
 use std::io::{Read, Write};
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(target_os = "unix")]
 use std::os::unix::fs::FileExt;
+#[cfg(target_os = "windows")]
+use std::os::windows::fs::FileExt;
 use std::path::{Path, PathBuf};
 
 enum RamRtcMode {
@@ -76,8 +78,9 @@ impl Cartridge for CartridgeMBC5 {
         None
     }
 
-    fn save_data(&self) -> Option<&Vec<u8>> { None }
-
+    fn save_data(&self) -> Option<&Vec<u8>> {
+        None
+    }
 }
 
 impl CartridgeMBC5 {

@@ -50,13 +50,15 @@ fn main() {
             *sample = x;
         }
     };
-    let output_stream = output_device
-        .build_output_stream(&config, output_data_fn, |err| {
-            eprintln!("Error build output stream: {:?}", err);
-        })
-        .unwrap();
-
-    output_stream.play().expect("Cannot play audio");
+    #[cfg(not(target_os = "windows"))]
+    {
+        let output_stream = output_device
+            .build_output_stream(&config, output_data_fn, |err| {
+                eprintln!("Error build output stream: {:?}", err);
+            })
+            .unwrap();
+        output_stream.play().expect("Cannot play audio");
+    }
 
     App::new()
         .insert_resource(BuffProducer(buff_prod))

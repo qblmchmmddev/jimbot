@@ -2,8 +2,10 @@ use crate::cartridge::metadata::Metadata;
 use crate::cartridge::Cartridge;
 use std::fs::{File, OpenOptions};
 use std::io::{Read, Write};
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(target_os = "unix")]
 use std::os::unix::fs::FileExt;
+#[cfg(target_os = "windows")]
+use std::os::windows::fs::FileExt;
 use std::path::{Path, PathBuf};
 
 enum RamRtcMode {
@@ -76,7 +78,10 @@ impl Cartridge for CartridgeMBC5RamBattery {
 
                     #[cfg(not(target_arch = "wasm32"))]
                     if let Some(save_file) = self.save_file.as_mut() {
+                        #[cfg(target_os = "unix")]
                         save_file.write_at(&self.ram[address..=address], address as u64);
+                        #[cfg(target_os = "windows")]
+                        save_file.seek_write(&self.ram[address..=address], address as u64);
                     }
                 } else {
                     println!(
@@ -107,12 +112,13 @@ impl Cartridge for CartridgeMBC5RamBattery {
         &self.metadata
     }
 
-    fn save_data(&self) -> Option<&Vec<u8>> { Some(&self.ram) }
+    fn save_data(&self) -> Option<&Vec<u8>> {
+        Some(&self.ram)
+    }
 
     fn save_data_mut(&mut self) -> Option<&mut Vec<u8>> {
         Some(&mut self.ram)
     }
-
 }
 
 impl CartridgeMBC5RamBattery {

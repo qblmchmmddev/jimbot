@@ -2,8 +2,10 @@ use crate::cartridge::metadata::Metadata;
 use crate::cartridge::Cartridge;
 use std::fs::{File, OpenOptions};
 use std::io::{Read, Write};
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(target_os = "unix")]
 use std::os::unix::fs::FileExt;
+#[cfg(target_os = "windows")]
+use std::os::windows::fs::FileExt;
 use std::path::{Path, PathBuf};
 
 pub struct CartridgeMBC2Battery {
@@ -30,7 +32,9 @@ impl Cartridge for CartridgeMBC2Battery {
                 self.data[(0x4000 * self.rom_hi_bank_number as usize) + (address - 0x4000)]
             }
             0xA000..=0xBFFF => {
-                if !self.ram_enabled { return 0xFF; };
+                if !self.ram_enabled {
+                    return 0xFF;
+                };
                 self.ram[address as usize & 0x1FF]
             }
             _ => panic!("Cartridge MBC1 GET {:#06X}", address),
@@ -43,7 +47,11 @@ impl Cartridge for CartridgeMBC2Battery {
                 if address & 0x100 == 0 {
                     self.ram_enabled = val & 0xF == 0xA;
                 } else {
-                    self.rom_hi_bank_number = if val & 0xF == 0 { 1 } else { (val & 0xF) as u16 };
+                    self.rom_hi_bank_number = if val & 0xF == 0 {
+                        1
+                    } else {
+                        (val & 0xF) as u16
+                    };
                 }
             }
             0xA000..=0xBFFF => {
@@ -52,7 +60,10 @@ impl Cartridge for CartridgeMBC2Battery {
                     self.ram[address] = val & 0xF;
                     #[cfg(not(target_arch = "wasm32"))]
                     if let Some(save_file) = self.save_file.as_mut() {
+                        #[cfg(target_os = "unix")]
                         save_file.write_at(&self.ram[address..=address], address as u64);
+                        #[cfg(target_os = "windows")]
+                        save_file.seek_write(&self.ram[address..=address], address as u64);
                     }
                 } else {
                     println!(
@@ -77,8 +88,9 @@ impl Cartridge for CartridgeMBC2Battery {
         Some(&mut self.ram)
     }
 
-    fn save_data(&self) -> Option<&Vec<u8>> { Some(&self.ram) }
-
+    fn save_data(&self) -> Option<&Vec<u8>> {
+        Some(&self.ram)
+    }
 }
 
 impl CartridgeMBC2Battery {
