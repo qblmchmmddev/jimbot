@@ -13,21 +13,9 @@ export enum Key {
 }
 export class JimbotWeb {
   free(): void;
-  /**
-   * @param {Uint8Array} cartridge_bytes
-   */
   constructor(cartridge_bytes: Uint8Array);
-  /**
-   * @param {Uint8Array} lcd_data
-   */
   run(lcd_data: Uint8Array): void;
-  /**
-   * @param {Key} key
-   */
   joypad_release(key: Key): void;
-  /**
-   * @param {Key} key
-   */
   joypad_press(key: Key): void;
 }
 
@@ -38,15 +26,17 @@ export interface InitOutput {
   readonly __wbg_jimbotweb_free: (a: number, b: number) => void;
   readonly main_js: () => void;
   readonly jimbotweb_new: (a: number, b: number) => number;
-  readonly jimbotweb_run: (a: number, b: number, c: number, d: number) => void;
+  readonly jimbotweb_run: (a: number, b: number, c: number, d: any) => void;
   readonly jimbotweb_joypad_release: (a: number, b: number) => void;
   readonly jimbotweb_joypad_press: (a: number, b: number) => void;
+  readonly __wbindgen_exn_store: (a: number) => void;
+  readonly __externref_table_alloc: () => number;
+  readonly __wbindgen_export_2: WebAssembly.Table;
+  readonly __wbindgen_free: (a: number, b: number, c: number) => void;
   readonly __wbindgen_malloc: (a: number, b: number) => number;
   readonly __wbindgen_realloc: (a: number, b: number, c: number, d: number) => number;
-  readonly __wbindgen_export_2: WebAssembly.Table;
-  readonly _dyn_core__ops__function__FnMut_____Output___R_as_wasm_bindgen__closure__WasmClosure___describe__invoke__h9a405ea9fbe878b7: (a: number, b: number) => void;
-  readonly __wbindgen_free: (a: number, b: number, c: number) => void;
-  readonly __wbindgen_exn_store: (a: number) => void;
+  readonly __wbindgen_export_6: WebAssembly.Table;
+  readonly _dyn_core__ops__function__FnMut_____Output___R_as_wasm_bindgen__closure__WasmClosure___describe__invoke__headd2c84f1a66374: (a: number, b: number) => void;
   readonly __wbindgen_start: () => void;
 }
 
