@@ -82,13 +82,20 @@
             var wh = Math.max(document.documentElement.clientHeight, window.innerHeight || 0);
             let ch = ww * h / w
             if (ch <= wh) {
-                app.canvas.style.width = "" + ww + "px"
-                app.canvas.style.height = "" + ch + "px"
+                let newW = ww
+                let newH = ch
+                app.canvas.style.width = "" + newW + "px"
+                app.canvas.style.height = "" + newH + "px"
+                app.renderer.resize(newW, newH)
+                app.stage.scale.set(newH/h/2)
             } else {
-                app.canvas.style.width = "" + wh * w / h + "px"
-                app.canvas.style.height = "" + wh + "px"
+                let newW = wh * w / h
+                let newH = wh
+                app.canvas.style.width = "" + newW + "px"
+                app.canvas.style.height = "" + newH + "px"
+                app.renderer.resize(newW, newH)
+                app.stage.scale.set(newH/h/2)
             }
-            app.renderer.resize(w*2, h*2)
         }
         window.onresize = calc_size
         calc_size()
