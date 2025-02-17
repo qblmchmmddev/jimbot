@@ -1,4 +1,8 @@
+use std::borrow::BorrowMut;
+use std::fmt::Debug;
+
 use bevy::prelude::{Commands, Res, ResMut};
+use bevy::utils::tracing::Instrument;
 use bevy_egui::egui::{RichText, ScrollArea, TextStyle, Window};
 use bevy_egui::{EguiContext, EguiContexts};
 use jimbot::jimbot::Jimbot;
@@ -29,34 +33,39 @@ pub fn run_ppu_debugger(
 ) {
     let jimbot = &jimbot.0;
     Window::new("PPU")
+        .default_open(true)
+        .default_size((640., 100.))
         .resizable(true)
         .show(egui_context.ctx_mut(), |ui| {
             ui.vertical(|ui| {
                 ui.collapsing("LCD", |ui| {
-                    ui.set_max_height(250.);
-                    ScrollArea::vertical().show(ui, |ui| {
-                        let lcd = jimbot.ppu().lcd();
-                        let mut lcd_flat = [0u8; 144 * 160];
-                        for y in 0..144usize {
-                            for x in 0..160usize {
-                                let index = y * 160 + x;
-                                lcd_flat[index] = lcd[x][y];
-                            }
+                    // ui.set_max_height(250.);
+                    // ScrollArea::vertical().show(ui, |ui| {
+                    let lcd = jimbot.ppu().lcd();
+                    let mut lcd_flat = [0u8; 144 * 160];
+                    for y in 0..144usize {
+                        for x in 0..160usize {
+                            let index = y * 160 + x;
+                            lcd_flat[index] = lcd[x][y];
                         }
-                        ui.label(
-                            RichText::new(config_hex(
-                                &lcd_flat,
-                                HexConfig {
-                                    title: false,
-                                    ascii: false,
-                                    width: 160,
-                                    group: 160,
-                                    chunk: 1,
-                                },
-                            ))
-                            .text_style(TextStyle::Small),
-                        );
-                    });
+                    }
+                    let lcd_as_string = lcd_flat.map(|i| i.to_string()).join("");
+                    ui.label(RichText::new(&lcd_as_string).size(7.))
+                    // ui.label(
+                    //     RichText::new(config_hex(
+                    //         &lcd_flat,
+                    //         HexConfig {
+                    //             title: false,
+                    //             ascii: false,
+                    //             width: 160,
+                    //             group: 160,
+                    //             chunk: 1,
+                    //         },
+                    //     ))
+                    //     .size(5.),
+                    //     // .text_style(TextStyle::Small),
+                    // );
+                    // });
                 });
             });
         });

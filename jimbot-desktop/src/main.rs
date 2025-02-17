@@ -51,14 +51,15 @@ fn main() {
         }
     };
     #[cfg(not(target_os = "windows"))]
-    {
+    let _output_stream = {
         let output_stream = output_device
             .build_output_stream(&config, output_data_fn, |err| {
                 eprintln!("Error build output stream: {:?}", err);
             })
             .unwrap();
         output_stream.play().expect("Cannot play audio");
-    }
+        output_stream
+    };
 
     App::new()
         .insert_resource(BuffProducer(buff_prod))
@@ -86,12 +87,25 @@ fn main() {
         )
         .add_plugins(EguiPlugin)
         .insert_resource(JimbotResource(Jimbot::default()))
-        .add_systems(Startup, setup)
-        // .add_startup_system(setup_cpu_debugger)
-        // .add_startup_system(setup_lcd_debugger)
-        // .add_startup_system(new_window)
-        // .add_system(Update, run_jimbot.label("run_jimbot"))
-        .add_systems(Update, run_jimbot)
+        .add_systems(
+            Startup,
+            (
+                setup,
+                // setup_cpu_debugger,
+                // setup_lcd_debugger,
+            ),
+        )
+        .add_systems(
+            Update,
+            (
+                run_jimbot,
+                // run_mmu_debugger,
+                // run_cpu_debugger,
+                // run_lcd_debugger,
+                // run_ppu_debugger,
+            ),
+        )
+        // .add_systems(Update, run_jimbot)
         // .add_system(run_mmu_debugger)
         // .add_system(run_cpu_debugger.before("run_jimbot"))
         // .add_system(run_lcd_debugger.after("run_jimbot"))

@@ -11,6 +11,10 @@ use crate::JimbotResource;
 
 #[derive(Resource)]
 pub struct LcdDebugger {
+    color0: [u8; 3],
+    color1: [u8; 3],
+    color2: [u8; 3],
+    color3: [u8; 3],
     image: Handle<Image>,
     texture: TextureId,
 }
@@ -39,6 +43,10 @@ pub fn setup_lcd_debugger(
     command.insert_resource(LcdDebugger {
         image: image.clone(),
         texture,
+        color0: [0x84, 0xd0, 0x7d],
+        color1: [0x5e, 0x78, 0x5d],
+        color2: [0x3e, 0x49, 0x43],
+        color3: [0x25, 0x2b, 0x25],
     });
 }
 
@@ -61,34 +69,44 @@ pub fn run_lcd_debugger(
             if px == 0x10 {
                 panic!()
             }
-            let color: u32 = match px {
-                // 0b00 => 0xE0F8D0,
-                // 0b01 => 0x88C070,
-                // 0b10 => 0x346856,
-                // _ => 0x081820,
-                // 0b00 => 0x0,
-                // 0b01 => 0xff0000,
-                // 0b10 => 0x00ff00,
-                // _ => 0x0000ff,
-                // 0b00 => 0x9BBC0F,
-                // 0b01 => 0x8BAC0F,
-                // 0b10 => 0x306230,
-                // _ => 0x0F380F,
-                // 0b00 => 0x84d07d,
-                // 0b01 => 0x5e785d,
-                // 0b10 => 0x3e4943,
-                // _ => 0x252b25,
-                0b00 => 0x84d07d,
-                0b01 => 0x5e785d,
-                0b10 => 0x3e4943,
-                _ => 0x252b25,
+            let color = match px {
+                0b00 => lcd_viewer_debug.color0,
+                0b01 => lcd_viewer_debug.color1,
+                0b10 => lcd_viewer_debug.color2,
+                _ => lcd_viewer_debug.color3,
             };
+            // let color: u32 = match px {
+            // 0b00 => 0xE0F8D0,
+            // 0b01 => 0x88C070,
+            // 0b10 => 0x346856,
+            // _ => 0x081820,
+            // 0b00 => 0x0,
+            // 0b01 => 0xff0000,
+            // 0b10 => 0x00ff00,
+            // _ => 0x0000ff,
+            // 0b00 => 0x9BBC0F,
+            // 0b01 => 0x8BAC0F,
+            // 0b10 => 0x306230,
+            // _ => 0x0F380F,
+            // 0b00 => 0x84d07d,
+            // 0b01 => 0x5e785d,
+            // 0b10 => 0x3e4943,
+            // _ => 0x252b25,
+            // 0b00 => 0x84d07d,
+            // 0b01 => 0x5e785d,
+            // 0b10 => 0x3e4943,
+            // _ => 0x252b25,
+            // };
             let offset_y = (lcd_y * byte_per_row) as usize;
             let offset_x = (lcd_x as usize * 4); //(x_tile * 8 * 4);
             let index = (offset_x + offset_y) as usize;
-            image.data[index + 0] = ((color >> 16) & 0xFF) as u8;
-            image.data[index + 1] = ((color >> 8) & 0xFF) as u8;
-            image.data[index + 2] = (color & 0xFF) as u8;
+            // image.data[index + 0] = ((color >> 16) & 0xFF) as u8;
+            // image.data[index + 1] = ((color >> 8) & 0xFF) as u8;
+            // image.data[index + 2] = (color & 0xFF) as u8;
+            // image.data[index + 3] = 0xFF;
+            image.data[index + 0] = color[0];
+            image.data[index + 1] = color[1];
+            image.data[index + 2] = color[2];
             image.data[index + 3] = 0xFF;
         }
     }
@@ -101,6 +119,16 @@ pub fn run_lcd_debugger(
             lcd_viewer_debug.texture,
             egui::Vec2::new(160.0 * 4.0, 144.0 * 4.0),
         ));
+        ui.horizontal(|ui| {
+            ui.label("Color 0");
+            ui.color_edit_button_srgb(&mut lcd_viewer_debug.color0);
+            ui.label("Color 1");
+            ui.color_edit_button_srgb(&mut lcd_viewer_debug.color1);
+            ui.label("Color 2");
+            ui.color_edit_button_srgb(&mut lcd_viewer_debug.color2);
+            ui.label("Color 3");
+            ui.color_edit_button_srgb(&mut lcd_viewer_debug.color3);
+        });
     });
     //
     // egui::Window::new("Interrupt").show(ctx.ctx_mut(), |ui| {
